@@ -11,9 +11,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fastify/static": "^10.1.6",
     "@tableau-clair/contracts": "workspace:*",
-    "@tableau-clair/domain": "workspace:*",
     "@tableau-clair/db": "workspace:*",
+    "@tableau-clair/domain": "workspace:*",
     "fastify": "^5.0.0"
   },
   "devDependencies": {

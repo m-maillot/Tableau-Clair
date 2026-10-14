@@ -10,10 +10,10 @@ Environnement local reproductible et description du déploiement (spec §11).
 
 ## Critères d'acceptation
 
-- [ ] `docker-compose.yml` (dev) : postgres, minio (bucket créé au démarrage), mailpit
-- [ ] `docker-compose.prod.yml` : app, postgres, reverse proxy HTTPS (Caddy ou Traefik) ; S3 externe via variables d'environnement
-- [ ] Fichier `.env.example` documenté
-- [ ] Health check de l'app et de la base
+- [x] `docker-compose.yml` (dev) : postgres, minio (bucket créé au démarrage), mailpit
+- [x] `docker-compose.prod.yml` : app, postgres, reverse proxy HTTPS (Caddy ou Traefik) ; S3 externe via variables d'environnement
+- [x] Fichier `.env.example` documenté
+- [x] Health check de l'app et de la base (`/api/health` ; le contrôle de connexion à la base depuis l'app arrive avec le ticket « Schéma de base de données »)
 
 ## Dépendances
 

@@ -1,0 +1,6 @@
+# Reverse proxy HTTPS (certificat Let's Encrypt automatique).
+# DOMAIN vient de l'environnement (voir .env.example).
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

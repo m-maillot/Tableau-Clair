@@ -1,10 +1,35 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
 import { healthResponseSchema } from '@tableau-clair/contracts';
 
-export function buildApp() {
+export interface AppOptions {
+  /** Dossier du build du front à servir (production, un seul service applicatif). */
+  webDist?: string | undefined;
+}
+
+export function buildApp(options: AppOptions = {}) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
 
-  app.get('/health', async () => healthResponseSchema.parse({ status: 'ok' }));
+  app.register(
+    async (api) => {
+      api.get('/health', async () => healthResponseSchema.parse({ status: 'ok' }));
+    },
+    { prefix: '/api' },
+  );
+
+  const { webDist } = options;
+  if (webDist && existsSync(join(webDist, 'index.html'))) {
+    app.register(fastifyStatic, { root: webDist, wildcard: false });
+    // Repli SPA : toute route inconnue hors /api renvoie l'application.
+    app.setNotFoundHandler((request, reply) => {
+      if (request.method === 'GET' && !request.url.startsWith('/api/')) {
+        return reply.sendFile('index.html');
+      }
+      return reply.code(404).send({ message: 'Not found' });
+    });
+  }
 
   return app;
 }

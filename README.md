@@ -13,8 +13,29 @@ Cartographie de tableaux électriques DIN : composition réelle sur rail, circui
 ## Démarrer en local
 
 ```bash
+cp .env.example .env
+docker compose up -d   # postgres, minio (bucket créé), mailpit
 pnpm install
-pnpm dev        # API sur :3000, web sur :5173 (proxy /api → API)
+pnpm dev               # API sur :3000, web sur :5173 (proxy /api → API)
+```
+
+Services de développement :
+
+| Service  | URL / port                                      |
+| -------- | ----------------------------------------------- |
+| Postgres | `localhost:5432` (`tableau` / `tableau`)        |
+| MinIO    | S3 `localhost:9010`, console `:9011`            |
+| Mailpit  | interface `http://localhost:8025`, SMTP `:1025` |
+
+Les ports se changent dans `.env` (`POSTGRES_PORT`, `S3_PORT`, `S3_CONSOLE_PORT`, `MAILPIT_UI_PORT`, `SMTP_PORT`).
+
+## Production
+
+`docker-compose.prod.yml` lance l'application (l'API sert aussi le front), PostgreSQL et Caddy (HTTPS automatique). Le stockage objet est un S3 externe, configuré par les variables `S3_*`.
+
+```bash
+cp .env.example .env   # puis remplacer les valeurs marquées PROD
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ## Commandes
