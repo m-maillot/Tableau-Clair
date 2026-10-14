@@ -1,4 +1,4 @@
-import { CURVES, ELEMENT_KINDS, RCD_TYPES, ROLES } from '@tableau-clair/domain';
+import { CURVES, ELEMENT_KINDS, PHOTO_USAGES, RCD_TYPES, ROLES } from '@tableau-clair/domain';
 import { z } from 'zod';
 
 // --- Limites -------------------------------------------------------------------------------------------
@@ -203,3 +203,25 @@ export const updateBoardSchema = z
   })
   .strict();
 export type UpdateBoardInput = z.infer<typeof updateBoardSchema>;
+
+// --- Photos et images de plan -----------------------------------------------------------------------------
+
+export const PHOTO_LIMITS = {
+  /** Taille maximale du fichier envoyé, avant réduction. */
+  maxUploadBytes: 15 * 1024 * 1024,
+} as const;
+
+export const photoUsageSchema = z.enum(PHOTO_USAGES);
+
+export const photoSchema = z.object({
+  ...auditFields,
+  propertyId: z.string().uuid(),
+  usage: photoUsageSchema,
+  mimeType: z.string(),
+  width: z.number().int(),
+  height: z.number().int(),
+  sizeBytes: z.number().int(),
+  /** Adresse de lecture : redirige vers une URL signée après contrôle des droits. */
+  contentUrl: z.string(),
+});
+export type Photo = z.infer<typeof photoSchema>;

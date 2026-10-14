@@ -8,6 +8,7 @@ import type { FastifyRequest } from 'fastify';
 import type { Auth } from './auth/auth';
 import { registerAuthRoutes } from './auth/routes';
 import { registerApiRoutes } from './routes';
+import type { ObjectStorage } from './storage/object-storage';
 
 export interface AppOptions {
   /** Dossier du build du front à servir (production, un seul service applicatif). */
@@ -18,7 +19,11 @@ export interface AppOptions {
   auth?: { instance: Auth; appUrl: string } | undefined;
   /** Routes métier (logements, tableaux, éléments). */
   api?:
-    | { db: Database; resolveUserId: (request: FastifyRequest) => Promise<string | null> }
+    | {
+        db: Database;
+        storage: ObjectStorage;
+        resolveUserId: (request: FastifyRequest) => Promise<string | null>;
+      }
     | undefined;
 }
 

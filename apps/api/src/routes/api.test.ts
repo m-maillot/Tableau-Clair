@@ -11,17 +11,21 @@ import type { Role } from '@tableau-clair/domain';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
+import { createTestBucket, type TestBucket } from '../storage/testing';
 
 let t: TestDatabase;
 let db: Database;
 let app: FastifyInstance;
+let bucket: TestBucket;
 
 beforeAll(async () => {
   t = await createTestDatabase();
   db = t.db;
+  bucket = await createTestBucket();
   app = buildApp({
     api: {
       db,
+      storage: bucket.storage,
       // Identité simulée : l'authentification réelle est couverte par auth.test.ts.
       resolveUserId: async (request) => {
         const header = request.headers['x-user-id'];
@@ -31,6 +35,7 @@ beforeAll(async () => {
   });
 });
 afterAll(async () => {
+  await bucket.drop();
   await t.drop();
 });
 

@@ -8,6 +8,10 @@ const base = {
   SMTP_HOST: 'smtp.test',
   SMTP_PORT: '587',
   MAIL_FROM: 'Tableau Clair <no-reply@tableau-clair.fr>',
+  S3_ENDPOINT: 'https://s3.test',
+  S3_BUCKET: 'tableau-clair',
+  S3_ACCESS_KEY: 'key',
+  S3_SECRET_KEY: 'secret',
 };
 
 describe('loadConfig', () => {
@@ -17,6 +21,11 @@ describe('loadConfig', () => {
     expect(config.allowedEmails.has('martial@racomach.fr')).toBe(true);
     expect(config.google).toBeUndefined();
     expect(config.smtp.port).toBe(587);
+    expect(config.s3).toMatchObject({
+      bucket: 'tableau-clair',
+      region: 'us-east-1',
+      forcePathStyle: false,
+    });
   });
 
   it('active Google seulement si identifiant et secret sont fournis', () => {
@@ -24,6 +33,11 @@ describe('loadConfig', () => {
     expect(
       loadConfig({ ...base, GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 's' }).google,
     ).toEqual({ clientId: 'id', clientSecret: 's' });
+  });
+
+  it('exige la configuration du stockage objet', () => {
+    expect(() => loadConfig({ ...base, S3_BUCKET: '' })).toThrow(/S3_BUCKET/);
+    expect(loadConfig({ ...base, S3_FORCE_PATH_STYLE: 'true' }).s3.forcePathStyle).toBe(true);
   });
 
   it('refuse une liste vide, un secret court et les valeurs d’exemple en production', () => {

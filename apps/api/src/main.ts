@@ -4,6 +4,7 @@ import { createAuth } from './auth/auth';
 import { toWebHeaders } from './auth/routes';
 import { loadConfig } from './config';
 import { createSmtpMailer } from './mailer';
+import { createS3Storage } from './storage/object-storage';
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? '0.0.0.0';
@@ -49,6 +50,7 @@ try {
     auth: { instance: auth, appUrl: config.appUrl },
     api: {
       db,
+      storage: createS3Storage(config.s3),
       resolveUserId: async (request) =>
         (await auth.api.getSession({ headers: toWebHeaders(request) }))?.user.id ?? null,
     },

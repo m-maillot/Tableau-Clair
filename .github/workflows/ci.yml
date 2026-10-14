@@ -30,6 +30,16 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: MinIO (stockage S3 des tests d'intégration)
+        run: |
+          docker run -d --name minio -p 9010:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio server /data
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9010/minio/health/ready && exit 0
+            sleep 1
+          done
+          echo "MinIO n'a pas démarré" && exit 1
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck

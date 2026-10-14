@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parseAllowedEmails } from './auth/allowlist';
+import type { S3Config } from './storage/object-storage';
 
 const DEV_SECRET_MARKER = 'change-me';
 
@@ -15,6 +16,15 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   MAIL_FROM: z.string().min(1),
+  S3_ENDPOINT: z.string().url(),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_BUCKET: z.string().min(1),
+  S3_ACCESS_KEY: z.string().min(1),
+  S3_SECRET_KEY: z.string().min(1),
+  S3_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export interface AppConfig {
@@ -24,6 +34,7 @@ export interface AppConfig {
   allowedEmails: ReadonlySet<string>;
   google: { clientId: string; clientSecret: string } | undefined;
   smtp: { host: string; port: number; user?: string; password?: string; from: string };
+  s3: S3Config;
 }
 
 /** Lit la configuration depuis l'environnement ; échoue avec un message lisible si elle est invalide. */
@@ -64,6 +75,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       ...(e.SMTP_USER ? { user: e.SMTP_USER } : {}),
       ...(e.SMTP_PASSWORD ? { password: e.SMTP_PASSWORD } : {}),
       from: e.MAIL_FROM,
+    },
+    s3: {
+      endpoint: e.S3_ENDPOINT,
+      region: e.S3_REGION,
+      bucket: e.S3_BUCKET,
+      accessKey: e.S3_ACCESS_KEY,
+      secretKey: e.S3_SECRET_KEY,
+      forcePathStyle: e.S3_FORCE_PATH_STYLE,
     },
   };
 }

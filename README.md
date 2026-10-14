@@ -95,6 +95,22 @@ Conventions :
 - Les écritures sur une rangée sont sérialisées (verrou de ligne) : deux ajouts simultanés au même
   emplacement ne peuvent pas réussir tous les deux.
 
+## Photos et images de plan
+
+Stockées dans un bucket S3 **privé** (MinIO en dev, S3 externe en production). Jamais servies sans
+contrôle de droits : `GET /api/photos/:id/content` vérifie l'appartenance au logement puis redirige vers
+une URL signée valable 5 minutes, utilisable directement dans une balise `<img>`.
+
+- **Envoi** : corps binaire brut (`image/jpeg`, `image/png` ou `image/webp`, 15 Mo maximum) avec
+  `?usage=board|element|fixture|floor_background`. Le contenu est vérifié sur le fichier lui-même, puis
+  l'orientation EXIF est appliquée, **toutes les métadonnées sont supprimées** (géolocalisation comprise),
+  l'image est réduite (1600 px, 3000 px pour une image de fond de plan) et ré-encodée en WebP.
+- **Rattachement** : l'`id` de la photo se passe en `photoId` à la création ou modification d'un tableau,
+  d'un élément (et plus tard d'un équipement ou d'un étage). Une photo d'un autre logement est refusée.
+- **Suppression** : celle d'une photo ou d'un logement supprime aussi les fichiers.
+- Compatibilité S3 : `S3_FORCE_PATH_STYLE=true` pour MinIO ; les sommes de contrôle automatiques du SDK
+  sont désactivées (refusées par plusieurs S3 compatibles).
+
 ## Commandes
 
 | Commande         | Rôle                                       |

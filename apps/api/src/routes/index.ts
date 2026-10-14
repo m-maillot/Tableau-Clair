@@ -3,6 +3,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { HttpError, unauthorized } from '../http';
 import { registerBoardRoutes } from './boards';
 import { registerElementRoutes } from './elements';
+import type { ObjectStorage } from '../storage/object-storage';
+import { registerPhotoRoutes } from './photos';
 import { registerPropertyRoutes } from './properties';
 
 declare module 'fastify' {
@@ -14,6 +16,7 @@ declare module 'fastify' {
 
 export interface ApiRoutesOptions {
   db: Database;
+  storage: ObjectStorage;
   /** Résout l'utilisateur d'une requête (session), ou `null` s'il n'est pas connecté. */
   resolveUserId: (request: FastifyRequest) => Promise<string | null>;
 }
@@ -40,8 +43,9 @@ export function registerApiRoutes(app: FastifyInstance, options: ApiRoutesOption
       request.userId = userId;
     });
 
-    registerPropertyRoutes(api, options.db);
+    registerPropertyRoutes(api, options.db, options.storage);
     registerBoardRoutes(api, options.db);
     registerElementRoutes(api, options.db);
+    registerPhotoRoutes(api, options.db, options.storage);
   });
 }

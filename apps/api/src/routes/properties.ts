@@ -7,9 +7,11 @@ import { and, asc, eq, memberships, properties, type Database } from '@tableau-c
 import type { FastifyInstance } from 'fastify';
 import { conflict, parseBody } from '../http';
 import { parseId, propertyAccess, requireRole } from './access';
+import type { ObjectStorage } from '../storage/object-storage';
+import { propertyObjectKeys } from './photos';
 import { toProperty } from './serialize';
 
-export function registerPropertyRoutes(app: FastifyInstance, db: Database) {
+export function registerPropertyRoutes(app: FastifyInstance, db: Database, storage: ObjectStorage) {
   app.get('/api/properties', async (request) => {
     const rows = await db
       .select({ property: properties, role: memberships.role })
@@ -73,7 +75,11 @@ export function registerPropertyRoutes(app: FastifyInstance, db: Database) {
     const id = idOf(request);
     const { role } = await propertyAccess(db, request.userId, id);
     requireRole(role, 'owner');
+    // Les lignes de photos disparaissent en cascade : on relève les fichiers avant.
+    const keys = await propertyObjectKeys(db, id);
     await db.delete(properties).where(eq(properties.id, id));
+    const failed = await storage.deleteMany(keys).catch(() => keys);
+    if (failed.length > 0) request.log.error({ keys: failed }, 'Fichiers orphelins non supprimés');
     return reply.code(204).send();
   });
 }
