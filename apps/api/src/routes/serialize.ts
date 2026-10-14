@@ -30,7 +30,7 @@ export function toProperty(row: PropertyRow, role: Role): Property {
   };
 }
 
-export function toElement(row: ElementRow): Element {
+export function toElement(row: ElementRow, linkedFixtures = 0): Element {
   return {
     id: row.id,
     createdAt: iso(row.createdAt),
@@ -56,10 +56,15 @@ export function toElement(row: ElementRow): Element {
     sensitivityMa: row.sensitivityMa,
     rcdType: row.rcdType,
     protectedByRcdId: row.protectedByRcdId,
+    linkedFixtures,
   };
 }
 
-export function toRow(row: RailRow, rowElements: ElementRow[]): Row {
+export function toRow(
+  row: RailRow,
+  rowElements: ElementRow[],
+  linked: ReadonlyMap<string, number> = new Map(),
+): Row {
   const sorted = [...rowElements].sort((a, b) => a.position - b.position);
   return {
     id: row.id,
@@ -71,7 +76,7 @@ export function toRow(row: RailRow, rowElements: ElementRow[]): Row {
     index: row.index,
     capacity: row.capacity,
     used: sorted.reduce((total, e) => total + e.width, 0),
-    elements: sorted.map(toElement),
+    elements: sorted.map((e) => toElement(e, linked.get(e.id) ?? 0)),
   };
 }
 

@@ -1,11 +1,18 @@
 import type { Element } from '@tableau-clair/contracts';
-import { BottomSheet } from '../ui';
+import { plural } from '../home/format';
+import { BottomSheet, Icon } from '../ui';
 import { appearanceOf, moduleRange } from './appearance';
 import styles from './ElementSheet.module.css';
 
 interface ElementSheetProps {
   element: Element | null;
   rowIndex: number;
+  /** Faux pour un lecteur : les actions de modification ne sont pas proposées. */
+  canEdit: boolean;
+  busy: boolean;
+  onMove: (delta: -1 | 1) => void;
+  onChangeRow: () => void;
+  onDelete: () => void;
   onClose: () => void;
 }
 
@@ -38,10 +45,29 @@ function detailsOf(element: Element): Detail[] {
   return list;
 }
 
-/** Feuille de détail d'un élément sélectionné : persistante, le rail reste utilisable derrière. */
-export function ElementSheet({ element, rowIndex, onClose }: ElementSheetProps) {
+/**
+ * Feuille de détail d'un élément sélectionné : persistante, le rail reste utilisable derrière.
+ * Les flèches décalent d'un module ; c'est l'alternative tactile au glisser-déposer (spec §15.5).
+ */
+export function ElementSheet({
+  element,
+  rowIndex,
+  canEdit,
+  busy,
+  onMove,
+  onChangeRow,
+  onDelete,
+  onClose,
+}: ElementSheetProps) {
   if (!element) return null;
-  const look = appearanceOf(element);
+  const linked = element.linkedFixtures;
+  const description = [
+    `Rangée ${rowIndex + 1}`,
+    moduleRange(element.position, element.width),
+    linked > 0 ? `${linked} ${plural(linked, 'équipement lié', 'équipements liés')}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <BottomSheet
@@ -50,11 +76,44 @@ export function ElementSheet({ element, rowIndex, onClose }: ElementSheetProps) 
       floating
       onClose={onClose}
       title={element.label}
-      description={`Rangée ${rowIndex + 1} · ${moduleRange(element.position, element.width)}`}
+      description={description}
+      footer={
+        canEdit ? (
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.square}
+              aria-label="Déplacer à gauche"
+              disabled={busy}
+              onClick={() => onMove(-1)}
+            >
+              <Icon name="arrow-left" size={20} strokeWidth={2.4} />
+            </button>
+            <button
+              type="button"
+              className={styles.square}
+              aria-label="Déplacer à droite"
+              disabled={busy}
+              onClick={() => onMove(1)}
+            >
+              <Icon name="arrow-right" size={20} strokeWidth={2.4} />
+            </button>
+            <button type="button" className={styles.wide} disabled={busy} onClick={onChangeRow}>
+              Changer de rangée
+            </button>
+            <button
+              type="button"
+              className={`${styles.square} ${styles.danger}`}
+              aria-label="Supprimer l’élément"
+              disabled={busy}
+              onClick={onDelete}
+            >
+              <Icon name="trash" size={20} strokeWidth={2.2} />
+            </button>
+          </div>
+        ) : undefined
+      }
     >
-      <div className={styles.head} aria-hidden="true">
-        <span className={styles.badge}>{look.top || '·'}</span>
-      </div>
       <dl className={styles.list}>
         {detailsOf(element).map((detail) => (
           <div key={detail.label} className={styles.item}>

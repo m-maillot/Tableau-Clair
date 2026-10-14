@@ -203,6 +203,36 @@ export function allowedWidthsAt(
   return candidates.filter((width) => width >= 1 && width <= max);
 }
 
+/**
+ * Position valide la plus proche de `preferred` pour un élément de `width` modules,
+ * ou `null` si aucune plage libre n'est assez large. Sert à changer un élément de rangée.
+ */
+export function nearestFreePosition(
+  row: RowState,
+  width: number,
+  preferred: number,
+  ignoreId?: string,
+): number | null {
+  if (!Number.isInteger(width) || width < 1) return null;
+  const others: RowState = {
+    capacity: row.capacity,
+    elements: ignoreId ? row.elements.filter((e) => e.id !== ignoreId) : row.elements,
+  };
+
+  let best: number | null = null;
+  for (const slot of freeSlots(others)) {
+    if (slot.width < width) continue;
+    const candidate = Math.min(
+      Math.max(preferred, slot.position),
+      slot.position + slot.width - width,
+    );
+    if (best === null || Math.abs(candidate - preferred) < Math.abs(best - preferred)) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
 // --- Géométrie du tableau ----------------------------------------------------------------------------
 
 /** Capacité minimale de la rangée : jusqu'au bout de son dernier élément (au moins 1). */

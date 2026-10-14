@@ -255,6 +255,51 @@ describe('tableaux', () => {
     );
   });
 
+  it('indique pour chaque élément le nombre d’équipements du plan qui lui sont reliés', async () => {
+    const { owner, property, board, rows } = await scenario();
+    const a = (await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(0))).body;
+    const b = (await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(1))).body;
+    expect(a.linkedFixtures).toBe(0);
+
+    const [floor] = await db
+      .insert(schema.floors)
+      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .returning();
+    const [room] = await db
+      .insert(schema.rooms)
+      .values({ floorId: floor!.id, name: 'Cuisine', x: 0, y: 0, w: 10, h: 10 })
+      .returning();
+    const made = await db
+      .insert(schema.fixtures)
+      .values(
+        [1, 2, 3].map((n) => ({
+          roomId: room!.id,
+          kind: 'socket' as const,
+          label: `P${n}`,
+          x: n,
+          y: n,
+        })),
+      )
+      .returning();
+    await db.insert(schema.circuits).values([
+      { fixtureId: made[0]!.id, breakerId: a.id, status: 'verified' as const },
+      { fixtureId: made[1]!.id, breakerId: a.id, status: 'assumed' as const },
+      { fixtureId: made[2]!.id, breakerId: b.id, status: 'assumed' as const },
+    ]);
+
+    const full = (await call(owner, 'GET', `/api/boards/${board.id}`)).body as Board;
+    const byLabel = Object.fromEntries(
+      full.rows.flatMap((r) => r.elements).map((e) => [e.id, e.linkedFixtures]),
+    );
+    expect(byLabel[a.id]).toBe(2);
+    expect(byLabel[b.id]).toBe(1);
+
+    const single = await call(owner, 'GET', `/api/elements/${a.id}`);
+    expect(single.body.linkedFixtures).toBe(2);
+    const moved = await call(owner, 'PATCH', `/api/elements/${a.id}`, { position: 5, version: 1 });
+    expect(moved.body.linkedFixtures).toBe(2);
+  });
+
   it('liste les tableaux avec leur occupation', async () => {
     const { owner, property, rows } = await scenario();
     await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(0));

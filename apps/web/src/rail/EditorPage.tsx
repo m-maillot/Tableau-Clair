@@ -3,22 +3,38 @@ import { maxWidthAt } from '@tableau-clair/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { lastModifiedLabel, plural } from '../home/format';
-import { useBoard } from '../home/queries';
+import { useBoard, useProperties } from '../home/queries';
 import { BottomSheet, IconButton } from '../ui';
+import { DeleteElementSheet } from './DeleteElementSheet';
 import { ElementSheet } from './ElementSheet';
 import styles from './EditorPage.module.css';
 import { RailRow, type SlotRef } from './RailRow';
+import { RowPickerSheet } from './RowPickerSheet';
+import { useRailActions } from './useRailActions';
 
-/** `/tableaux/:boardId` : composition du tableau, rangée par rangée. */
+function isTyping(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  );
+}
+
+/** `/tableaux/:boardId` : composition du tableau, rangée par rangée, et sa modification. */
 export function EditorPage() {
-  const { boardId } = useParams();
+  const { boardId = '' } = useParams();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const board = useBoard(boardId);
+  const properties = useProperties();
+  const actions = useRailActions(boardId);
   const [slot, setSlot] = useState<SlotRef | null>(null);
+  const [choosingRow, setChoosingRow] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const data = board.data;
   const elementId = params.get('element');
+  const role = properties.data?.find((p) => p.id === data?.propertyId)?.role;
+  const canEdit = role !== 'viewer';
 
   const selected = useMemo(() => {
     if (!data || !elementId) return null;
@@ -37,6 +53,26 @@ export function EditorPage() {
       .querySelector(`[data-element-id="${selectedId}"]`)
       ?.scrollIntoView?.({ inline: 'center', block: 'nearest' });
   }, [selectedId]);
+
+  // Ctrl/⌘+Z annule, Ctrl/⌘+Maj+Z (ou Ctrl+Y) rétablit — hors champs de saisie.
+  const { undo, redo, canUndo, canRedo } = actions;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isTyping(event.target) || !(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey && canUndo) {
+        event.preventDefault();
+        void undo();
+      } else if ((key === 'z' && event.shiftKey) || key === 'y') {
+        if (canRedo) {
+          event.preventDefault();
+          void redo();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undo, redo, canUndo, canRedo]);
 
   if (board.isPending) {
     return (
@@ -67,8 +103,7 @@ export function EditorPage() {
 
   const selectElement = (element: Element) => {
     setSlot(null);
-    const same = element.id === elementId;
-    setParams(same ? {} : { element: element.id }, { replace: true });
+    setParams(element.id === elementId ? {} : { element: element.id }, { replace: true });
   };
 
   const selectSlot = (next: SlotRef) => {
@@ -79,6 +114,7 @@ export function EditorPage() {
   const slotRow = slot ? data.rows.find((r) => r.index === slot.rowIndex) : undefined;
   const available = slot && slotRow ? maxWidthAt(slotRow, slot.position) : 0;
   const hasSheet = !!selected || !!slot;
+  const notice = actions.notice;
 
   return (
     <main className={`${styles.page} ${hasSheet ? styles.withSheet : ''}`}>
@@ -92,12 +128,42 @@ export function EditorPage() {
           <h1 className={styles.title}>{data.name}</h1>
           {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         </div>
+        {canEdit && (
+          <>
+            <IconButton
+              label={
+                actions.undoLabel ? `Annuler : ${actions.undoLabel}` : 'Annuler la dernière action'
+              }
+              icon="undo"
+              disabled={!actions.canUndo || actions.busy}
+              onClick={() => void actions.undo()}
+            />
+            <IconButton
+              label={actions.redoLabel ? `Rétablir : ${actions.redoLabel}` : 'Rétablir'}
+              icon="redo"
+              disabled={!actions.canRedo || actions.busy}
+              onClick={() => void actions.redo()}
+            />
+          </>
+        )}
         <IconButton
           label="Paramètres du tableau"
           icon="settings"
           onClick={() => navigate(`/tableaux/${data.id}/parametres`)}
         />
       </header>
+
+      {/* Annonce des résultats : succès en « status » (poli), refus en « alert » (immédiat). */}
+      <div className={styles.noticeRegion}>
+        {notice && (
+          <p
+            role={notice.tone === 'error' ? 'alert' : 'status'}
+            className={`${styles.notice} ${notice.tone === 'error' ? styles.noticeError : ''}`}
+          >
+            {notice.text}
+          </p>
+        )}
+      </div>
 
       <div className={styles.rows}>
         {data.rows.map((row) => (
@@ -106,6 +172,7 @@ export function EditorPage() {
             row={row}
             selectedElementId={selected?.element.id ?? null}
             selectedSlot={slot}
+            refusedId={actions.refusedId}
             onSelectElement={selectElement}
             onSelectSlot={selectSlot}
           />
@@ -115,7 +182,36 @@ export function EditorPage() {
       <ElementSheet
         element={selected?.element ?? null}
         rowIndex={selected?.row.index ?? 0}
+        canEdit={canEdit}
+        busy={actions.busy}
+        onMove={(delta) => selected && void actions.move(selected.element, delta)}
+        onChangeRow={() => setChoosingRow(true)}
+        onDelete={() => setDeleting(true)}
         onClose={() => setParams({}, { replace: true })}
+      />
+
+      <RowPickerSheet
+        board={data}
+        element={choosingRow ? (selected?.element ?? null) : null}
+        onClose={() => setChoosingRow(false)}
+        onPick={(rowId) => {
+          setChoosingRow(false);
+          if (selected) void actions.changeRow(selected.element, rowId);
+        }}
+      />
+
+      <DeleteElementSheet
+        element={deleting ? (selected?.element ?? null) : null}
+        rowIndex={selected?.row.index ?? 0}
+        onClose={() => setDeleting(false)}
+        onConfirm={() => {
+          const element = selected?.element;
+          setDeleting(false);
+          if (!element) return;
+          void actions.remove(element).then((done) => {
+            if (done) setParams({}, { replace: true });
+          });
+        }}
       />
 
       <BottomSheet

@@ -113,6 +113,8 @@ export const elementSchema = z.object({
   sensitivityMa: z.number().int().nullable(),
   rcdType: z.enum(RCD_TYPES).nullable(),
   protectedByRcdId: z.string().uuid().nullable(),
+  /** Équipements du plan reliés à cet élément (disjoncteur) : « 4 équipements liés ». */
+  linkedFixtures: z.number().int().min(0).default(0),
 });
 export type Element = z.infer<typeof elementSchema>;
 

@@ -1,4 +1,5 @@
 import {
+  elementSchema,
   boardImpactSchema,
   boardSchema,
   boardSummarySchema,
@@ -11,6 +12,9 @@ import {
   type BoardImpact,
   type BoardSummary,
   type CreateBoardInput,
+  type CreateElementInput,
+  type Element,
+  type UpdateElementInput,
   type CreatePropertyInput,
   type Photo,
   type UpdateBoardInput,
@@ -94,7 +98,7 @@ export async function signOut(): Promise<void> {
 
 // --- Logements, tableaux, vue d'ensemble, recherche ----------------------------------------------------
 
-async function getJson<T>(path: string, schema: z.ZodType<T>): Promise<T> {
+async function getJson<T>(path: string, schema: z.ZodType<T, z.ZodTypeDef, unknown>): Promise<T> {
   const response = await request(path);
   if (!response.ok) throw await failure(response);
   return schema.parse(await response.json());
@@ -178,3 +182,28 @@ export async function deletePhoto(photoId: string): Promise<void> {
 
 /** Adresse d'affichage d'une photo (redirige vers une URL signée après contrôle des droits). */
 export const photoUrl = (photoId: string) => `/api/photos/${photoId}/content`;
+
+// --- Éléments du rail ----------------------------------------------------------------------------------------
+
+export async function createElement(rowId: string, input: CreateElementInput): Promise<Element> {
+  const response = await request(`/api/rows/${rowId}/elements`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw await failure(response);
+  return elementSchema.parse(await response.json());
+}
+
+export async function patchElement(elementId: string, input: UpdateElementInput): Promise<Element> {
+  const response = await request(`/api/elements/${elementId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw await failure(response);
+  return elementSchema.parse(await response.json());
+}
+
+export async function deleteElement(elementId: string): Promise<void> {
+  const response = await request(`/api/elements/${elementId}`, { method: 'DELETE' });
+  if (!response.ok) throw await failure(response);
+}

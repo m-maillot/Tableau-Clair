@@ -19,6 +19,7 @@ import type { FastifyInstance } from 'fastify';
 import { conflict, notFound, parseBody, unprocessable } from '../http';
 import { elementAccess, parseId, requireRole, rowAccess } from './access';
 import { assertPhotoInProperty } from './boards';
+import { linkedCounts } from './board-loader';
 import { toElement, toRow } from './serialize';
 
 const idOf = (request: { params: unknown }, key = 'id') =>
@@ -165,7 +166,8 @@ export function registerElementRoutes(app: FastifyInstance, db: Database) {
   // --- Élément : lecture ----------------------------------------------------------------------------------------
   app.get('/api/elements/:id', async (request) => {
     const { element } = await elementAccess(db, request.userId, idOf(request));
-    return toElement(element);
+    const linked = await linkedCounts(db, [element.id]);
+    return toElement(element, linked.get(element.id) ?? 0);
   });
 
   // --- Élément : modification, déplacement, redimensionnement -------------------------------------
@@ -222,7 +224,8 @@ export function registerElementRoutes(app: FastifyInstance, db: Database) {
         .where(and(eq(elements.id, id), eq(elements.version, input.version)))
         .returning();
       if (!updated) throw conflict(toElement(current));
-      return toElement(updated);
+      const linked = await linkedCounts(tx, [updated.id]);
+      return toElement(updated, linked.get(updated.id) ?? 0);
     });
   });
 

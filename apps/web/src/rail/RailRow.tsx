@@ -17,6 +17,8 @@ interface RailRowProps {
   row: Row;
   selectedElementId: string | null;
   selectedSlot: SlotRef | null;
+  /** Élément dont le déplacement vient d'être refusé : il tremble et se cerne en rouge. */
+  refusedId?: string | null;
   onSelectElement: (element: Element) => void;
   onSelectSlot: (slot: SlotRef) => void;
 }
@@ -36,6 +38,7 @@ export function RailRow({
   row,
   selectedElementId,
   selectedSlot,
+  refusedId = null,
   onSelectElement,
   onSelectSlot,
 }: RailRowProps) {
@@ -88,7 +91,9 @@ export function RailRow({
                 ]
                   .filter(Boolean)
                   .join(', ')}
-                className={`${styles.cell} ${styles[look.tone]} ${selected ? styles.selected : ''}`}
+                className={`${styles.cell} ${styles[look.tone]} ${selected ? styles.selected : ''} ${
+                  element.id === refusedId ? styles.refused : ''
+                }`}
                 style={{ gridColumn: span }}
                 onClick={() => onSelectElement(element)}
               >

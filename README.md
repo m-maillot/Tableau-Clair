@@ -122,6 +122,15 @@ Conventions :
 - Les écritures sur une rangée sont sérialisées (verrou de ligne) : deux ajouts simultanés au même
   emplacement ne peuvent pas réussir tous les deux.
 
+### Édition du rail
+
+Les actions de la feuille de détail (← →, changer de rangée, supprimer) sont validées localement par
+les règles du package `domain`, appliquées au cache de manière optimiste, puis envoyées à l'API.
+Les envois sont sérialisés (chacun avec la version à jour de l'élément) ; un échec ou un conflit
+rétablit l'état précédent et l'indique. **Annuler / rétablir** (boutons, ou Ctrl/⌘+Z et
+Ctrl/⌘+Maj+Z) conserve les 50 dernières actions de la session. Restaurer un élément supprimé le
+recrée avec un nouvel identifiant : ses liaisons avec le plan restent « inconnues ».
+
 ## Photos et images de plan
 
 Stockées dans un bucket S3 **privé** (MinIO en dev, S3 externe en production). Jamais servies sans

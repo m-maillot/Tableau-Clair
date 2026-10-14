@@ -65,6 +65,9 @@ const PATHS = {
     <path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z" />
   ),
   undo: <path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3" />,
+  redo: <path d="M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3" />,
+  'arrow-left': <path d="M19 12H5M11 6l-6 6 6 6" />,
+  'arrow-right': <path d="M5 12h14M13 6l6 6-6 6" />,
   'alert-circle': (
     <>
       <circle cx="12" cy="12" r="9" />

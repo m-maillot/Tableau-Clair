@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   allowedWidthsAt,
   analyzeBoardResize,
+  nearestFreePosition,
   fitsInRow,
   freeSlots,
   maxWidthAt,
@@ -365,5 +366,31 @@ describe('analyzeBoardResize', () => {
       { rowCount: 1, modulesPerRow: 2 },
     );
     expect(result.modules?.element).toEqual({ id: 'x', start: 4, end: 4 });
+  });
+});
+
+describe('nearestFreePosition', () => {
+  const r = row(12, el('a', 0, 2), el('b', 5, 3));
+
+  it('garde la position souhaitée quand elle est libre', () => {
+    expect(nearestFreePosition(r, 1, 3)).toBe(3);
+    expect(nearestFreePosition(r, 2, 3)).toBe(3);
+  });
+
+  it('se décale jusqu’à la plage libre la plus proche', () => {
+    expect(nearestFreePosition(r, 1, 0)).toBe(2);
+    expect(nearestFreePosition(r, 1, 6)).toBe(4);
+    expect(nearestFreePosition(r, 2, 6)).toBe(8);
+    expect(nearestFreePosition(r, 3, 6)).toBe(8);
+  });
+
+  it('retourne null sans plage assez large', () => {
+    expect(nearestFreePosition(r, 5, 0)).toBeNull();
+    expect(nearestFreePosition(row(2, el('a', 0, 2)), 1, 0)).toBeNull();
+    expect(nearestFreePosition(r, 0, 0)).toBeNull();
+  });
+
+  it('ignore l’élément lui-même', () => {
+    expect(nearestFreePosition(r, 3, 5, 'b')).toBe(5);
   });
 });

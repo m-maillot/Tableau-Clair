@@ -3,6 +3,7 @@ import {
   asc,
   boardRows,
   boards,
+  circuits,
   elements,
   eq,
   inArray,
@@ -65,12 +66,30 @@ async function lastModifiedOf(db: DbExecutor, boardId: string): Promise<LastModi
   return { at: new Date(last.updated_at).toISOString(), by };
 }
 
+/** Nombre d'équipements du plan reliés à chacun des éléments donnés. */
+export async function linkedCounts(
+  db: DbExecutor,
+  elementIds: string[],
+): Promise<Map<string, number>> {
+  if (elementIds.length === 0) return new Map();
+  const rows = await db
+    .select({ id: circuits.breakerId, count: sql<number>`count(*)::int` })
+    .from(circuits)
+    .where(inArray(circuits.breakerId, elementIds))
+    .groupBy(circuits.breakerId);
+  return new Map(rows.flatMap((r) => (r.id ? [[r.id, r.count] as const] : [])));
+}
+
 /** Tableau complet : géométrie, rangées, éléments. */
 export async function loadBoard(db: DbExecutor, board: BoardRow): Promise<Board> {
   const { rails, byRow } = await loadRails(db, board.id);
+  const linked = await linkedCounts(
+    db,
+    [...byRow.values()].flat().map((e) => e.id),
+  );
   return toBoard(
     board,
-    rails.map((r) => toRow(r, byRow.get(r.id) ?? [])),
+    rails.map((r) => toRow(r, byRow.get(r.id) ?? [], linked)),
     await lastModifiedOf(db, board.id),
   );
 }
