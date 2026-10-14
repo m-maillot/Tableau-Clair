@@ -1,0 +1,126 @@
+.row {
+  flex: none;
+  padding: 12px 0 12px 12px;
+  border-radius: 22px;
+  background: var(--color-surface);
+}
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 12px 8px 0;
+}
+.title {
+  font-size: 14px;
+  font-weight: 800;
+}
+.count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+.scroller {
+  overflow-x: auto;
+  padding-right: 12px;
+  /* Les cartes sont sélectionnées par pression : pas de sélection de texte qui gêne le défilement. */
+  -webkit-overflow-scrolling: touch;
+}
+.strip {
+  display: grid;
+  grid-auto-rows: 104px;
+  gap: 3px;
+  width: max-content;
+}
+
+/* Cellule : un module ou plus, toujours un bouton (cible tactile ≥ 44 px de large). */
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  grid-row: 1;
+  min-width: 0;
+  padding: 8px 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+.top {
+  font-size: 14px;
+}
+.label {
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.ink {
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+.blue {
+  background: var(--color-blue);
+  color: var(--color-white);
+}
+.other {
+  background: var(--color-module-other);
+  color: var(--color-ink);
+}
+.other .top {
+  font-size: 13px;
+}
+.connected {
+  padding: 6px 0;
+  border: 2px solid var(--color-blue);
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+.spare {
+  justify-content: center;
+  padding: 0;
+  border: 2px dashed var(--color-muted);
+  background: transparent;
+  color: var(--color-muted);
+}
+.spareText {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Sélection : fond lime et contour sombre (spec §15.2). */
+.selected {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 1px;
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+/* Module libre : case pointillée cliquable. */
+.free {
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border: 2px dashed var(--color-slot-border);
+  background: var(--color-white);
+  color: var(--color-muted);
+  font-weight: 600;
+}
+.freeSelected {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 1px;
+  border-color: transparent;
+  background: var(--color-lime);
+  color: var(--color-ink);
+  font-weight: 800;
+}
+.plus {
+  font-size: 20px;
+  line-height: 1;
+}
+.number {
+  font-size: 10px;
+}

@@ -75,6 +75,7 @@ function makeBoard(overrides: Record<string, unknown> = {}) {
     rowCount: 3,
     modulesPerRow: 24,
     notes: 'Coffret refait en 2019.',
+    lastModified: { at: NOW, by: 'Martial' },
     rows: [
       row(
         0,

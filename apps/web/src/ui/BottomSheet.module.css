@@ -74,3 +74,20 @@
   gap: 10px;
   margin-top: 16px;
 }
+
+/* Feuille flottante : décollée des bords, au-dessus de la barre d'onglets (68 px + 16 px). */
+.floating {
+  right: 12px;
+  bottom: 92px;
+  left: 12px;
+  padding: 14px 16px 16px;
+  border: 1px solid #e3e8f2;
+  border-radius: 26px;
+  box-shadow: 0 -4px 28px rgba(13, 27, 61, 0.16);
+}
+.floating .handle {
+  display: none;
+}
+.floating .header {
+  margin-top: 0;
+}

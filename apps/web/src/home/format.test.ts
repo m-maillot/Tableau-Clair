@@ -23,6 +23,13 @@ describe('lastModifiedLabel', () => {
     expect(lastModifiedLabel({ at, by: null }, NOW)).toBe('Modifié hier');
   });
 
+  it('affiche le prénom quand le serveur ne connaît que l’adresse', () => {
+    const at = new Date(2026, 9, 13, 18, 42).toISOString();
+    expect(lastModifiedLabel({ at, by: 'martial@racomach.fr' }, NOW)).toBe(
+      'Modifié hier par Martial',
+    );
+  });
+
   it('ne dit rien sans modification', () => {
     expect(lastModifiedLabel(null, NOW)).toBeNull();
   });

@@ -24,6 +24,11 @@ export interface BottomSheetProps {
    * (feuille de détail de l'éditeur).
    */
   modal?: boolean;
+  /**
+   * Feuille détachée des bords, posée au-dessus de la barre d'onglets (éditeur de rail).
+   * Sans effet sur une feuille modale.
+   */
+  floating?: boolean;
 }
 
 const FOCUSABLE =
@@ -37,6 +42,7 @@ export function BottomSheet({
   children,
   footer,
   modal = true,
+  floating = false,
 }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -93,7 +99,7 @@ export function BottomSheet({
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       tabIndex={-1}
-      className={`${styles.sheet} ${modal ? '' : styles.persistent}`}
+      className={`${styles.sheet} ${modal ? '' : styles.persistent} ${!modal && floating ? styles.floating : ''}`}
       onKeyDown={onKeyDown}
     >
       <div className={styles.handle} aria-hidden="true" />

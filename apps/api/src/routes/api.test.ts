@@ -240,6 +240,21 @@ describe('tableaux', () => {
     }
   });
 
+  it('expose la dernière modification du tableau, éléments compris, avec son auteur', async () => {
+    const { owner, board, rows } = await scenario();
+    await db.update(schema.users).set({ displayName: 'Martial' }).where(eq(schema.users.id, owner));
+
+    const before = (await call(owner, 'GET', `/api/boards/${board.id}`)).body;
+    expect(before.lastModified.by).toBe('Martial');
+
+    await new Promise((r) => setTimeout(r, 15));
+    await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(0));
+    const after = (await call(owner, 'GET', `/api/boards/${board.id}`)).body;
+    expect(new Date(after.lastModified.at).getTime()).toBeGreaterThan(
+      new Date(before.lastModified.at).getTime(),
+    );
+  });
+
   it('liste les tableaux avec leur occupation', async () => {
     const { owner, property, rows } = await scenario();
     await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(0));

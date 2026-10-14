@@ -161,6 +161,12 @@ export const updateRowSchema = z
   .strict();
 export type UpdateRowInput = z.infer<typeof updateRowSchema>;
 
+/** Dernière modification d'un ensemble d'entités : quand, et par qui (nom affiché, à défaut adresse). */
+export const lastModifiedSchema = z
+  .object({ at: z.string(), by: z.string().nullable() })
+  .nullable();
+export type LastModified = z.infer<typeof lastModifiedSchema>;
+
 // --- Tableaux ----------------------------------------------------------------------------------------------------------
 
 const boardFields = {
@@ -175,7 +181,12 @@ const boardFields = {
 };
 
 /** Tableau avec sa composition complète : rangées et éléments. */
-export const boardSchema = z.object({ ...boardFields, rows: z.array(rowSchema) });
+export const boardSchema = z.object({
+  ...boardFields,
+  rows: z.array(rowSchema),
+  /** Dernière modification du tableau, de ses rangées ou de ses éléments. */
+  lastModified: lastModifiedSchema,
+});
 export type Board = z.infer<typeof boardSchema>;
 
 /** Tableau en liste : sans le détail des éléments. */
@@ -263,13 +274,7 @@ export const overviewSchema = z.object({
     unknown: z.number().int(),
   }),
   /** Dernière modification de n'importe quel élément du logement. */
-  lastModified: z
-    .object({
-      at: z.string(),
-      /** Nom affiché (à défaut, adresse) de la personne. */
-      by: z.string().nullable(),
-    })
-    .nullable(),
+  lastModified: lastModifiedSchema,
 });
 export type Overview = z.infer<typeof overviewSchema>;
 

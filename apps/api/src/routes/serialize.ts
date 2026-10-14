@@ -1,4 +1,11 @@
-import type { Board, BoardSummary, Element, Property, Row } from '@tableau-clair/contracts';
+import type {
+  Board,
+  BoardSummary,
+  Element,
+  LastModified,
+  Property,
+  Row,
+} from '@tableau-clair/contracts';
 import type { boardRows, boards, elements, properties } from '@tableau-clair/db';
 import type { Role } from '@tableau-clair/domain';
 
@@ -85,8 +92,12 @@ function boardFields(row: BoardRow) {
   };
 }
 
-export function toBoard(row: BoardRow, rails: Row[]): Board {
-  return { ...boardFields(row), rows: [...rails].sort((a, b) => a.index - b.index) };
+export function toBoard(row: BoardRow, rails: Row[], lastModified: LastModified): Board {
+  return {
+    ...boardFields(row),
+    rows: [...rails].sort((a, b) => a.index - b.index),
+    lastModified,
+  };
 }
 
 export function toBoardSummary(row: BoardRow, rails: RailRow[], used: number): BoardSummary {

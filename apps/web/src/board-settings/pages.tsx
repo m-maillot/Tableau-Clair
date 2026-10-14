@@ -130,29 +130,3 @@ export function BoardsPage() {
     </main>
   );
 }
-
-/** `/tableaux/:boardId` : l'éditeur de rail arrive avec un ticket suivant ; en attendant, un point d'accès. */
-export function BoardPage() {
-  const { boardId } = useParams();
-  const board = useBoard(boardId);
-
-  if (board.isPending) return <Status>Chargement…</Status>;
-  if (board.isError || !board.data)
-    return <Status role="alert">Ce tableau est introuvable.</Status>;
-
-  const data = board.data;
-  return (
-    <main className={styles.page}>
-      <h1 className={styles.heading}>{data.name}</h1>
-      <p className={styles.subtitle}>
-        {[data.location, `${data.rowCount} rangées`, `${data.modulesPerRow} modules par rangée`]
-          .filter(Boolean)
-          .join(' · ')}
-      </p>
-      <p className={styles.status}>L'éditeur de rail arrive bientôt.</p>
-      <Link to={`/tableaux/${data.id}/parametres`} className={styles.link}>
-        Paramètres du tableau
-      </Link>
-    </main>
-  );
-}

@@ -86,6 +86,14 @@ const PATHS = {
     </>
   ),
   'chevron-left': <path d="M15 5l-7 7 7 7" />,
+  settings: (
+    <>
+      <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" />
+      <circle cx="15" cy="6" r="2" />
+      <circle cx="9" cy="12" r="2" />
+      <circle cx="17" cy="18" r="2" />
+    </>
+  ),
   /** Éclair plein : disjoncteur. */
   bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" strokeWidth={1.5} />,
 } satisfies Record<string, ReactNode>;
