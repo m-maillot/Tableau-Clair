@@ -8,7 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { PlanPage } from './plan/PlanPage';
 import { EditorPage } from './rail/EditorPage';
 import { AppShell } from './shell/AppShell';
-import { ComingSoonPage } from './shell/ComingSoonPage';
+import { ReviewPage } from './review/ReviewPage';
 import { Button } from './ui';
 
 /** Réserve les routes enfants aux utilisateurs connectés. */
@@ -50,7 +50,7 @@ export function AppRoutes() {
           <Route path="/tableaux" element={<BoardsPage />} />
           <Route path="/tableaux/:boardId" element={<EditorPage />} />
           <Route path="/plan" element={<PlanPage />} />
-          <Route path="/verifier" element={<ComingSoonPage title="À vérifier" />} />
+          <Route path="/verifier" element={<ReviewPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

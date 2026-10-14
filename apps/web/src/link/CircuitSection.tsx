@@ -225,7 +225,7 @@ interface JustCutProps {
  * « Je viens de le couper : qu'est-ce qui est tombé ? » Les équipements cochés passent à
  * « vérifiée » ; les autres restent inchangés (on ne déduit rien d'un équipement non testé).
  */
-function JustCutSheet({ propertyId, breakerId, fixtures, onClose }: JustCutProps) {
+export function JustCutSheet({ propertyId, breakerId, fixtures, onClose }: JustCutProps) {
   const { link, busy } = useLinkMutations(propertyId);
   const [fell, setFell] = useState<Set<string>>(new Set());
   const [failed, setFailed] = useState(false);
