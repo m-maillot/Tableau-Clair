@@ -10,7 +10,7 @@ Initialiser le monorepo décrit en spec §11 : `apps/web`, `apps/api`, `packages
 
 ## Critères d'acceptation
 
-- [ ] pnpm workspaces, TypeScript strict partagé, alias de paquets
-- [ ] ESLint + Prettier, Vitest configuré par paquet
-- [ ] GitHub Actions : lint, `tsc --noEmit`, tests, build
-- [ ] README : lancer le projet en local
+- [x] pnpm workspaces, TypeScript strict partagé, alias de paquets
+- [x] ESLint + Prettier, Vitest configuré par paquet
+- [x] GitHub Actions : lint, `tsc --noEmit`, tests, build
+- [x] README : lancer le projet en local
