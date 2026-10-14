@@ -1,0 +1,145 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 14px;
+}
+.kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.nudge {
+  display: flex;
+  gap: 6px;
+}
+.nudge button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.legend {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pair {
+  display: flex;
+  gap: 8px;
+}
+.palette {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.paletteItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--color-surface);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+}
+.paletteIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--color-white);
+  color: var(--color-blue);
+}
+.background {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--color-surface);
+}
+.range {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.range input {
+  width: 100%;
+  min-height: 32px;
+  accent-color: var(--color-blue);
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--touch-target);
+  font-size: 14px;
+  font-weight: 600;
+}
+.check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-blue);
+}
+.hint {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.confirm {
+  padding: 14px;
+  border: 1.5px solid var(--color-danger);
+  border-radius: 16px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.confirm .actions {
+  margin-top: 10px;
+}

@@ -1,3 +1,4 @@
+import type { Photo } from '@tableau-clair/contracts';
 import { useRef, useState } from 'react';
 import { ApiResponseError, NetworkError, photoUrl, uploadPhoto } from '../api/client';
 import { Button, Icon } from '../ui';
@@ -12,7 +13,7 @@ interface PhotoFieldProps {
   title?: string;
   hint?: string;
   /** Appelé avec l'identifiant de la nouvelle photo (ou `null` pour la retirer). */
-  onChange: (photoId: string | null, uploaded?: boolean) => void;
+  onChange: (photoId: string | null, uploaded?: boolean, photo?: Photo) => void;
 }
 
 function uploadError(error: unknown): string {
@@ -45,7 +46,7 @@ export function PhotoField({
     setBusy(true);
     try {
       const photo = await uploadPhoto(propertyId, file, usage);
-      onChange(photo.id, true);
+      onChange(photo.id, true, photo);
     } catch (problem) {
       setError(uploadError(problem));
     } finally {

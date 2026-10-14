@@ -79,3 +79,55 @@ export async function elementAccess(db: DbExecutor, userId: string, elementId: s
   if (!row) throw notFound('Élément');
   return row;
 }
+
+// --- Plan : étages, pièces, équipements -----------------------------------------------------------------
+
+export async function floorAccess(db: DbExecutor, userId: string, floorId: string) {
+  const [row] = await db
+    .select({ floor: schema.floors, role: memberships.role })
+    .from(schema.floors)
+    .innerJoin(
+      memberships,
+      and(eq(memberships.propertyId, schema.floors.propertyId), eq(memberships.userId, userId)),
+    )
+    .where(eq(schema.floors.id, floorId))
+    .limit(1);
+  if (!row) throw notFound('Étage');
+  return row;
+}
+
+export async function roomAccess(db: DbExecutor, userId: string, roomId: string) {
+  const [row] = await db
+    .select({ room: schema.rooms, floor: schema.floors, role: memberships.role })
+    .from(schema.rooms)
+    .innerJoin(schema.floors, eq(schema.floors.id, schema.rooms.floorId))
+    .innerJoin(
+      memberships,
+      and(eq(memberships.propertyId, schema.floors.propertyId), eq(memberships.userId, userId)),
+    )
+    .where(eq(schema.rooms.id, roomId))
+    .limit(1);
+  if (!row) throw notFound('Pièce');
+  return row;
+}
+
+export async function fixtureAccess(db: DbExecutor, userId: string, fixtureId: string) {
+  const [row] = await db
+    .select({
+      fixture: schema.fixtures,
+      room: schema.rooms,
+      floor: schema.floors,
+      role: memberships.role,
+    })
+    .from(schema.fixtures)
+    .innerJoin(schema.rooms, eq(schema.rooms.id, schema.fixtures.roomId))
+    .innerJoin(schema.floors, eq(schema.floors.id, schema.rooms.floorId))
+    .innerJoin(
+      memberships,
+      and(eq(memberships.propertyId, schema.floors.propertyId), eq(memberships.userId, userId)),
+    )
+    .where(eq(schema.fixtures.id, fixtureId))
+    .limit(1);
+  if (!row) throw notFound('Équipement');
+  return row;
+}

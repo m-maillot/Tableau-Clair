@@ -97,6 +97,13 @@ const PATHS = {
       <circle cx="17" cy="18" r="2" />
     </>
   ),
+  plug: <path d="M9 2v6M15 2v6M7 8h10v4a5 5 0 01-10 0zM12 17v5" />,
+  eye: (
+    <>
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
   /** Éclair plein : disjoncteur. */
   bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" strokeWidth={1.5} />,
 } satisfies Record<string, ReactNode>;

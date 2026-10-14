@@ -1,4 +1,8 @@
 import {
+  fixtureSchema,
+  floorSchema,
+  planSchema,
+  roomSchema,
   customModelSchema,
   elementSchema,
   boardImpactSchema,
@@ -14,6 +18,15 @@ import {
   type BoardSummary,
   type CreateBoardInput,
   type CreateCustomModelInput,
+  type CreateFixtureInput,
+  type CreateRoomInput,
+  type Fixture,
+  type Floor,
+  type Plan,
+  type Room,
+  type UpdateFixtureInput,
+  type UpdateFloorInput,
+  type UpdateRoomInput,
   type CreateElementInput,
   type CustomModel,
   type Element,
@@ -229,3 +242,44 @@ export async function deleteCustomModel(modelId: string): Promise<void> {
   const response = await request(`/api/custom-models/${modelId}`, { method: 'DELETE' });
   if (!response.ok) throw await failure(response);
 }
+
+// --- Plan : étages, pièces, équipements ----------------------------------------------------------------------
+
+export const fetchPlan = (propertyId: string): Promise<Plan> =>
+  getJson(`/api/properties/${propertyId}/plan`, planSchema);
+
+async function sendJson<T>(
+  path: string,
+  method: 'POST' | 'PATCH' | 'PUT',
+  body: unknown,
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+): Promise<T> {
+  const response = await request(path, { method, body: JSON.stringify(body) });
+  if (!response.ok) throw await failure(response);
+  return schema.parse(await response.json());
+}
+
+async function remove(path: string): Promise<void> {
+  const response = await request(path, { method: 'DELETE' });
+  if (!response.ok) throw await failure(response);
+}
+
+export const createFloor = (propertyId: string, name: string): Promise<Floor> =>
+  sendJson(`/api/properties/${propertyId}/floors`, 'POST', { name }, floorSchema);
+export const updateFloor = (floorId: string, input: UpdateFloorInput): Promise<Floor> =>
+  sendJson(`/api/floors/${floorId}`, 'PATCH', input, floorSchema);
+export const reorderFloors = (propertyId: string, ids: string[]): Promise<Floor[]> =>
+  sendJson(`/api/properties/${propertyId}/floors/order`, 'PUT', { ids }, z.array(floorSchema));
+export const deleteFloor = (floorId: string) => remove(`/api/floors/${floorId}`);
+
+export const createRoom = (floorId: string, input: CreateRoomInput): Promise<Room> =>
+  sendJson(`/api/floors/${floorId}/rooms`, 'POST', input, roomSchema);
+export const updateRoom = (roomId: string, input: UpdateRoomInput): Promise<Room> =>
+  sendJson(`/api/rooms/${roomId}`, 'PATCH', input, roomSchema);
+export const deleteRoom = (roomId: string) => remove(`/api/rooms/${roomId}`);
+
+export const createFixture = (roomId: string, input: CreateFixtureInput): Promise<Fixture> =>
+  sendJson(`/api/rooms/${roomId}/fixtures`, 'POST', input, fixtureSchema);
+export const updateFixture = (fixtureId: string, input: UpdateFixtureInput): Promise<Fixture> =>
+  sendJson(`/api/fixtures/${fixtureId}`, 'PATCH', input, fixtureSchema);
+export const deleteFixture = (fixtureId: string) => remove(`/api/fixtures/${fixtureId}`);

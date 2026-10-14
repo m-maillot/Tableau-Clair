@@ -7,6 +7,7 @@ import { registerElementRoutes } from './elements';
 import type { ObjectStorage } from '../storage/object-storage';
 import { registerOverviewRoutes } from './overview';
 import { registerPhotoRoutes } from './photos';
+import { registerPlanRoutes } from './plan';
 import { registerPropertyRoutes } from './properties';
 
 declare module 'fastify' {
@@ -51,5 +52,6 @@ export function registerApiRoutes(app: FastifyInstance, options: ApiRoutesOption
     registerOverviewRoutes(api, options.db);
     registerCustomModelRoutes(api, options.db);
     registerPhotoRoutes(api, options.db, options.storage);
+    registerPlanRoutes(api, options.db, options.storage);
   });
 }

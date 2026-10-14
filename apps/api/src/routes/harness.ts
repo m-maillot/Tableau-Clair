@@ -33,7 +33,7 @@ export async function createHarness() {
 
   async function call(
     userId: string | null,
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
     payload?: unknown,
   ) {

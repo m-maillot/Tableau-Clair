@@ -1,0 +1,22 @@
+.region {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  left: 16px;
+  z-index: 30;
+  pointer-events: none;
+}
+.toast {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--color-ink);
+  color: var(--color-white);
+  box-shadow: var(--shadow-floating);
+  font-size: 14px;
+  font-weight: 600;
+}
+.error {
+  background: var(--color-danger);
+}

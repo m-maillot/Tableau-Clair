@@ -5,6 +5,7 @@ import { SessionProvider, useSession } from './auth/session';
 import { BoardSettingsPage, BoardsPage, NewBoardPage } from './board-settings/pages';
 import { HomePage } from './home/HomePage';
 import { LoginPage } from './pages/LoginPage';
+import { PlanPage } from './plan/PlanPage';
 import { EditorPage } from './rail/EditorPage';
 import { AppShell } from './shell/AppShell';
 import { ComingSoonPage } from './shell/ComingSoonPage';
@@ -48,7 +49,7 @@ export function AppRoutes() {
           <Route path="/" element={<HomePage />} />
           <Route path="/tableaux" element={<BoardsPage />} />
           <Route path="/tableaux/:boardId" element={<EditorPage />} />
-          <Route path="/plan" element={<ComingSoonPage title="Plan du logement" />} />
+          <Route path="/plan" element={<PlanPage />} />
           <Route path="/verifier" element={<ComingSoonPage title="À vérifier" />} />
         </Route>
       </Route>

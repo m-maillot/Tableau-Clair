@@ -14,3 +14,4 @@ export { TabBar, type TabBarProps, type TabItem, type TabLinkProps } from './Tab
 export { TextField, type TextFieldProps } from './TextField';
 export { TypeChip, type TypeChipProps } from './TypeChip';
 export { TextArea, type TextAreaProps } from './TextArea';
+export { Toast, type ToastProps } from './Toast';

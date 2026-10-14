@@ -9,11 +9,13 @@ import {
   fetchBoardImpact,
   fetchBoards,
   fetchOverview,
+  fetchPlan,
   fetchProperties,
   searchProperty,
 } from '../api/client';
 
 export const keys = {
+  plan: (propertyId: string) => ['properties', propertyId, 'plan'] as const,
   customModels: ['custom-models'] as const,
   properties: ['properties'] as const,
   boards: (propertyId: string) => ['properties', propertyId, 'boards'] as const,
@@ -130,3 +132,10 @@ export function useRemoveCustomModel() {
     onSuccess: () => client.invalidateQueries({ queryKey: keys.customModels }),
   });
 }
+
+export const usePlan = (propertyId: string | undefined) =>
+  useQuery({
+    queryKey: keys.plan(propertyId ?? ''),
+    queryFn: () => fetchPlan(propertyId!),
+    enabled: !!propertyId,
+  });

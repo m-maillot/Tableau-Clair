@@ -1,0 +1,32 @@
+.canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+  background: var(--color-surface);
+  /* Le défilement de la page reste possible sur le fond ; les éléments gardent leurs gestes. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.drawing {
+  cursor: crosshair;
+  touch-action: none;
+}
+.room,
+.fixture,
+.handle {
+  touch-action: none;
+  cursor: pointer;
+}
+.handle {
+  cursor: nwse-resize;
+}
+.room:focus-visible,
+.fixture:focus-visible {
+  outline: none;
+}
+.room:focus-visible rect,
+.fixture:focus-visible circle:first-of-type {
+  stroke: var(--color-ink);
+  stroke-width: 4px;
+}

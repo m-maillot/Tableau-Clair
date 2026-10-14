@@ -130,6 +130,25 @@ photo facultative. « Autre appareil… » demande nom, rôle, marque, modèle /
 il peut être **enregistré comme modèle du compte** et réutilisé dans tous les logements
 (« Mes modèles »). L'ajout entre dans l'historique : il s'annule et se rétablit.
 
+### Plan du logement
+
+Un plan par étage (onglets : ajout, renommage, ordre, suppression), dessiné en SVG dans un canevas de
+1000 × 700 unités. Les règles de géométrie sont dans `packages/domain/src/plan.ts`, partagées par
+le navigateur et le serveur :
+
+- **Pièces** : rectangles tracés en mode « Dessiner une pièce », déplacés par glisser, redimensionnés
+  par les poignées de coin (taille minimale 40, jamais hors du plan). Les équipements suivent leur
+  pièce quand elle est déplacée, et sont ramenés dedans si elle rétrécit.
+- **Équipements** : posés dans une pièce, depuis la palette (appui = au centre de la pièce active,
+  glissé = là où on lâche) ou déplacés sur le plan. Hors de toute pièce, le dépôt est refusé.
+- **Alternative au glisser** : flèches de déplacement fin et pas de taille, pour le clavier.
+- **Image de fond** par étage : import, opacité, taille, verrouillage (déverrouillée, elle se déplace
+  en la faisant glisser sur le plan). Remplacer ou retirer l'image supprime l'ancien fichier.
+- **Circuit** : `?breaker=<id>` met en évidence les équipements d'un disjoncteur (anneau lime),
+  les autres sont neutres, ceux sans disjoncteur sont en pointillés avec « ? ».
+
+Hors périmètre de cet écran : lier un équipement à un disjoncteur (ticket « Liaisons »).
+
 ### Édition du rail
 
 Les actions de la feuille de détail (← →, changer de rangée, supprimer) sont validées localement par

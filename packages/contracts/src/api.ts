@@ -1,6 +1,7 @@
 import {
   CURVES,
   ELEMENT_KINDS,
+  FIXTURE_KINDS,
   PHOTO_USAGES,
   RCD_TYPES,
   ROLES,
@@ -326,3 +327,160 @@ export const createCustomModelSchema = z
   })
   .strict();
 export type CreateCustomModelInput = z.infer<typeof createCustomModelSchema>;
+
+// --- Plan : étages, pièces, équipements -------------------------------------------------------------------------
+
+/** Dimensions par défaut du canevas d'un étage, en unités de plan. */
+export const FLOOR_DEFAULTS = { width: 1000, height: 700 } as const;
+export const PLAN_LIMITS = { maxCanvas: 4000, minCanvas: 200 } as const;
+
+export const fixtureKindSchema = z.enum(FIXTURE_KINDS);
+
+export const floorSchema = z.object({
+  ...auditFields,
+  propertyId: z.string().uuid(),
+  name: z.string(),
+  index: z.number().int(),
+  width: z.number(),
+  height: z.number(),
+  backgroundImageId: z.string().uuid().nullable(),
+  backgroundOpacity: z.number(),
+  backgroundX: z.number(),
+  backgroundY: z.number(),
+  backgroundScale: z.number(),
+  backgroundLocked: z.boolean(),
+});
+export type Floor = z.infer<typeof floorSchema>;
+
+export const roomSchema = z.object({
+  ...auditFields,
+  floorId: z.string().uuid(),
+  name: z.string(),
+  x: z.number(),
+  y: z.number(),
+  w: z.number(),
+  h: z.number(),
+});
+export type Room = z.infer<typeof roomSchema>;
+
+export const fixtureLinkSchema = z.object({
+  breakerId: z.string().uuid().nullable(),
+  status: verificationSchema,
+});
+export type FixtureLink = z.infer<typeof fixtureLinkSchema>;
+
+export const fixtureSchema = z.object({
+  ...auditFields,
+  roomId: z.string().uuid(),
+  kind: fixtureKindSchema,
+  label: z.string(),
+  x: z.number(),
+  y: z.number(),
+  notes: z.string().nullable(),
+  photoId: z.string().uuid().nullable(),
+  /** Disjoncteur qui l'alimente (`null` : aucun lien, « à identifier »). */
+  link: fixtureLinkSchema.nullable(),
+});
+export type Fixture = z.infer<typeof fixtureSchema>;
+
+export const planFloorSchema = floorSchema.extend({
+  /** Dimensions de l'image de fond (pour la cadrer), si elle existe. */
+  background: z.object({ width: z.number().int(), height: z.number().int() }).nullable(),
+  rooms: z.array(roomSchema),
+  fixtures: z.array(fixtureSchema),
+});
+export type PlanFloor = z.infer<typeof planFloorSchema>;
+
+/** Disjoncteur du logement, tel qu'utile au plan (bandeau du circuit, choix d'un circuit). */
+export const planBreakerSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string(),
+  ratingA: z.number().int().nullable(),
+  boardId: z.string().uuid(),
+  boardName: z.string(),
+  rowIndex: z.number().int(),
+  position: z.number().int(),
+  linkedCount: z.number().int(),
+});
+export type PlanBreaker = z.infer<typeof planBreakerSchema>;
+
+export const planSchema = z.object({
+  floors: z.array(planFloorSchema),
+  breakers: z.array(planBreakerSchema),
+});
+export type Plan = z.infer<typeof planSchema>;
+
+const coordinate = z.number().finite().min(-PLAN_LIMITS.maxCanvas).max(PLAN_LIMITS.maxCanvas);
+const canvasSize = z.number().min(PLAN_LIMITS.minCanvas).max(PLAN_LIMITS.maxCanvas);
+
+export const createFloorSchema = z.object({ name }).strict();
+export type CreateFloorInput = z.infer<typeof createFloorSchema>;
+
+export const updateFloorSchema = z
+  .object({
+    name: name.optional(),
+    width: canvasSize.optional(),
+    height: canvasSize.optional(),
+    backgroundImageId: z.string().uuid().nullable().optional(),
+    backgroundOpacity: z.number().min(0).max(1).optional(),
+    backgroundX: coordinate.optional(),
+    backgroundY: coordinate.optional(),
+    backgroundScale: z.number().min(0.05).max(10).optional(),
+    backgroundLocked: z.boolean().optional(),
+    ...versioned,
+  })
+  .strict();
+export type UpdateFloorInput = z.infer<typeof updateFloorSchema>;
+
+export const reorderFloorsSchema = z.object({ ids: z.array(z.string().uuid()).min(1) }).strict();
+export type ReorderFloorsInput = z.infer<typeof reorderFloorsSchema>;
+
+export const createRoomSchema = z
+  .object({
+    name,
+    x: coordinate,
+    y: coordinate,
+    w: z.number().positive(),
+    h: z.number().positive(),
+  })
+  .strict();
+export type CreateRoomInput = z.infer<typeof createRoomSchema>;
+
+export const updateRoomSchema = z
+  .object({
+    name: name.optional(),
+    x: coordinate.optional(),
+    y: coordinate.optional(),
+    w: z.number().positive().optional(),
+    h: z.number().positive().optional(),
+    ...versioned,
+  })
+  .strict();
+export type UpdateRoomInput = z.infer<typeof updateRoomSchema>;
+
+export const createFixtureSchema = z
+  .object({
+    kind: fixtureKindSchema,
+    label: name,
+    x: coordinate,
+    y: coordinate,
+    notes: optionalText,
+    photoId: z.string().uuid().nullable().optional(),
+  })
+  .strict();
+export type CreateFixtureInput = z.infer<typeof createFixtureSchema>;
+
+export const updateFixtureSchema = z
+  .object({
+    kind: fixtureKindSchema.optional(),
+    label: name.optional(),
+    x: coordinate.optional(),
+    y: coordinate.optional(),
+    /** Déplacement vers une autre pièce du même logement. */
+    roomId: z.string().uuid().optional(),
+    notes: optionalText,
+    photoId: z.string().uuid().nullable().optional(),
+    ...versioned,
+  })
+  .strict();
+export type UpdateFixtureInput = z.infer<typeof updateFixtureSchema>;

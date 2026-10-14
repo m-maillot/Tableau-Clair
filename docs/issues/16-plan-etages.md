@@ -10,11 +10,11 @@ Maquette « Plan » (§15.4), spec §7.4.
 
 ## Critères d'acceptation
 
-- [ ] Onglets d'étages (ajout, renommage, ordre, suppression)
-- [ ] Image de fond par étage : import, opacité, repositionnement, mise à l'échelle, verrouillage
-- [ ] Dessin et redimensionnement de pièces rectangulaires
-- [ ] Palette d'équipements et placement par glisser-déposer
-- [ ] Rendu : surbrillance du circuit sélectionné, autre circuit, à identifier ; légende
+- [x] Onglets d'étages (ajout, renommage, ordre, suppression)
+- [x] Image de fond par étage : import, opacité, repositionnement, mise à l'échelle, verrouillage
+- [x] Dessin et redimensionnement de pièces rectangulaires
+- [x] Palette d'équipements et placement par glisser-déposer
+- [x] Rendu : surbrillance du circuit sélectionné, autre circuit, à identifier ; légende
 
 ## Dépendances
 

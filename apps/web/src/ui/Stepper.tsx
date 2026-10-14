@@ -8,6 +8,8 @@ export interface StepperProps {
   onChange: (value: number) => void;
   min?: number;
   max?: number;
+  /** Pas d'une pression (1 par défaut). */
+  step?: number;
   /** Texte de l'unité lu avec la valeur (« modules »). */
   unit?: string;
   /** Valeur refusée : le contrôle passe en erreur ; `describedBy` pointe le message. */
@@ -21,12 +23,13 @@ export function Stepper({
   onChange,
   min = 1,
   max,
+  step = 1,
   unit,
   invalid = false,
   describedBy,
 }: StepperProps) {
-  const atMin = value <= min;
-  const atMax = max !== undefined && value >= max;
+  const atMin = value - step < min;
+  const atMax = max !== undefined && value + step > max;
   return (
     <div
       role="group"
@@ -40,7 +43,7 @@ export function Stepper({
         className={styles.button}
         aria-label={`Diminuer : ${label}`}
         disabled={atMin}
-        onClick={() => onChange(value - 1)}
+        onClick={() => onChange(value - step)}
       >
         <Icon name="minus" size={18} strokeWidth={2.6} />
       </button>
@@ -53,7 +56,7 @@ export function Stepper({
         className={styles.button}
         aria-label={`Augmenter : ${label}`}
         disabled={atMax}
-        onClick={() => onChange(value + 1)}
+        onClick={() => onChange(value + step)}
       >
         <Icon name="plus" size={18} strokeWidth={2.6} />
       </button>
