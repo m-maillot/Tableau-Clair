@@ -4,6 +4,7 @@ import { HttpError, unauthorized } from '../http';
 import { registerBoardRoutes } from './boards';
 import { registerElementRoutes } from './elements';
 import type { ObjectStorage } from '../storage/object-storage';
+import { registerOverviewRoutes } from './overview';
 import { registerPhotoRoutes } from './photos';
 import { registerPropertyRoutes } from './properties';
 
@@ -46,6 +47,7 @@ export function registerApiRoutes(app: FastifyInstance, options: ApiRoutesOption
     registerPropertyRoutes(api, options.db, options.storage);
     registerBoardRoutes(api, options.db);
     registerElementRoutes(api, options.db);
+    registerOverviewRoutes(api, options.db);
     registerPhotoRoutes(api, options.db, options.storage);
   });
 }

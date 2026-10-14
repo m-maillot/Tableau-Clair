@@ -13,11 +13,15 @@ Cartographie de tableaux électriques DIN : composition réelle sur rail, circui
 ## Démarrer en local
 
 ```bash
-cp .env.example .env
 docker compose up -d   # postgres, minio (bucket créé), mailpit
 pnpm install
 pnpm dev               # API sur :3000, web sur :5173 (proxy /api → API)
 ```
+
+Aucune configuration n'est nécessaire en local : l'API lit `.env.example` (valeurs adaptées au
+`docker compose` de dev), puis `.env` s'il existe et le surcharge. Créez un `.env` pour changer un
+port ou renseigner `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. Les migrations sont appliquées au
+démarrage de l'API.
 
 Services de développement :
 
@@ -87,6 +91,9 @@ sont décrits par les schémas Zod de `packages/contracts`.
 
 Conventions :
 
+- **Recherche** : insensible à la casse et aux accents (extension PostgreSQL `unaccent`), 2 caractères
+  minimum, 30 résultats au plus ; `%` et `_` sont cherchés comme du texte. Depuis un équipement du plan,
+  le résultat indique le disjoncteur à couper (tableau, rangée, module) et le statut de la liaison.
 - **404** pour toute ressource hors de ses logements (jamais 403 : on ne révèle pas son existence) ;
   **403** si le rôle est insuffisant.
 - **409 `version_conflict`** : le `version` envoyé n'est plus le courant ; `details` contient l'état actuel.

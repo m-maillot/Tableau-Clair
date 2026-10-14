@@ -1,0 +1,38 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 80px;
+  padding: 0 18px;
+  border-radius: var(--radius-card);
+  background: var(--color-blue);
+  color: var(--color-white);
+  text-decoration: none;
+}
+.icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 0;
+}
+.name {
+  font-size: 16px;
+  font-weight: 700;
+}
+.details {
+  font-size: 13px;
+  color: #e8efff;
+}

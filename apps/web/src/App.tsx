@@ -1,7 +1,11 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useState } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router';
 import { SessionProvider, useSession } from './auth/session';
-import { HomePage } from './pages/HomePage';
+import { HomePage } from './home/HomePage';
 import { LoginPage } from './pages/LoginPage';
+import { AppShell } from './shell/AppShell';
+import { ComingSoonPage } from './shell/ComingSoonPage';
 import { Button } from './ui';
 
 /** Réserve les routes enfants aux utilisateurs connectés. */
@@ -35,7 +39,14 @@ export function AppRoutes() {
     <Routes>
       <Route path="/connexion" element={<LoginPage />} />
       <Route element={<RequireSession />}>
-        <Route path="/" element={<HomePage />} />
+        <Route element={<AppShell />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/tableaux" element={<ComingSoonPage title="Tableaux" />} />
+          <Route path="/tableaux/nouveau" element={<ComingSoonPage title="Nouveau tableau" />} />
+          <Route path="/tableaux/:boardId" element={<ComingSoonPage title="Tableau" />} />
+          <Route path="/plan" element={<ComingSoonPage title="Plan du logement" />} />
+          <Route path="/verifier" element={<ComingSoonPage title="À vérifier" />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -43,11 +54,17 @@ export function AppRoutes() {
 }
 
 export function App() {
+  // Un écran qui retente sans fin n'aide pas : une nouvelle tentative suffit pour un incident réseau bref.
+  const [client] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 15_000 } } }),
+  );
   return (
-    <BrowserRouter>
-      <SessionProvider>
-        <AppRoutes />
-      </SessionProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={client}>
+      <BrowserRouter>
+        <SessionProvider>
+          <AppRoutes />
+        </SessionProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }

@@ -1,4 +1,17 @@
-import { meResponseSchema, type MeResponse } from '@tableau-clair/contracts';
+import {
+  boardSummarySchema,
+  meResponseSchema,
+  overviewSchema,
+  propertySchema,
+  searchResultSchema,
+  type BoardSummary,
+  type CreatePropertyInput,
+  type MeResponse,
+  type Overview,
+  type Property,
+  type SearchResult,
+} from '@tableau-clair/contracts';
+import { z } from 'zod';
 
 /** Le serveur n'a pas pu être joint (réseau coupé, serveur arrêté). */
 export class NetworkError extends Error {
@@ -68,3 +81,35 @@ export async function signOut(): Promise<void> {
   const response = await request('/api/auth/sign-out', { method: 'POST', body: '{}' });
   if (!response.ok) throw await failure(response);
 }
+
+// --- Logements, tableaux, vue d'ensemble, recherche ----------------------------------------------------
+
+async function getJson<T>(path: string, schema: z.ZodType<T>): Promise<T> {
+  const response = await request(path);
+  if (!response.ok) throw await failure(response);
+  return schema.parse(await response.json());
+}
+
+export const fetchProperties = (): Promise<Property[]> =>
+  getJson('/api/properties', z.array(propertySchema));
+
+export async function createProperty(input: CreatePropertyInput): Promise<Property> {
+  const response = await request('/api/properties', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw await failure(response);
+  return propertySchema.parse(await response.json());
+}
+
+export const fetchBoards = (propertyId: string): Promise<BoardSummary[]> =>
+  getJson(`/api/properties/${propertyId}/boards`, z.array(boardSummarySchema));
+
+export const fetchOverview = (propertyId: string): Promise<Overview> =>
+  getJson(`/api/properties/${propertyId}/overview`, overviewSchema);
+
+export const searchProperty = (propertyId: string, query: string): Promise<SearchResult[]> =>
+  getJson(
+    `/api/properties/${propertyId}/search?q=${encodeURIComponent(query)}`,
+    z.array(searchResultSchema),
+  );

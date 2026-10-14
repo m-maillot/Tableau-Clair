@@ -1,0 +1,89 @@
+.card {
+  padding: 18px 18px 20px;
+  border-radius: 26px;
+  background: var(--color-surface);
+}
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.title {
+  font-size: 15px;
+  font-weight: 700;
+}
+.modified {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+.empty {
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+.figures {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+.figure {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-blue);
+}
+.figureRight {
+  text-align: right;
+}
+.label {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-ink);
+}
+.total {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+.bar {
+  display: flex;
+  gap: 3px;
+  height: 10px;
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+.verified {
+  background: var(--color-blue);
+}
+.assumed {
+  background: #f5a524;
+}
+.unknown {
+  background: #c9d1e3;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted);
+  list-style: none;
+}
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -37,12 +38,15 @@ function mockServer(routes: Record<string, Handler>) {
 const anonymous: Record<string, Handler> = { '/api/me': () => json({}, 401) };
 
 function renderAt(path: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <SessionProvider>
-        <AppRoutes />
-      </SessionProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <SessionProvider>
+          <AppRoutes />
+        </SessionProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -72,7 +76,7 @@ describe('écran de connexion', () => {
   });
 
   it('renvoie un utilisateur déjà connecté vers l’accueil', async () => {
-    mockServer({ '/api/me': () => json(USER) });
+    mockServer({ '/api/me': () => json(USER), '/api/properties': () => json([]) });
     renderAt('/connexion');
     expect(await screen.findByRole('heading', { name: /Bonjour/ })).toBeInTheDocument();
   });

@@ -1,0 +1,32 @@
+.card {
+  margin-top: 24px;
+  padding: 24px 20px;
+  border-radius: 26px;
+  background: var(--color-surface);
+}
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-lime);
+}
+.title {
+  margin-top: 16px;
+  font-size: 20px;
+  font-weight: 800;
+}
+.text {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+}

@@ -65,7 +65,12 @@ const PATHS = {
     <path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z" />
   ),
   undo: <path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3" />,
+  /** Éclair plein : disjoncteur. */
+  bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" strokeWidth={1.5} />,
 } satisfies Record<string, ReactNode>;
+
+/** Pictogrammes pleins (les autres sont au trait). */
+const FILLED = new Set<IconName>(['bolt']);
 
 export type IconName = keyof typeof PATHS;
 
@@ -83,7 +88,7 @@ export function Icon({ name, size = 24, strokeWidth = 2.2, ...rest }: IconProps)
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={FILLED.has(name) ? 'currentColor' : 'none'}
       stroke="currentColor"
       strokeWidth={strokeWidth}
       strokeLinecap="round"

@@ -1,4 +1,11 @@
-import { CURVES, ELEMENT_KINDS, PHOTO_USAGES, RCD_TYPES, ROLES } from '@tableau-clair/domain';
+import {
+  CURVES,
+  ELEMENT_KINDS,
+  PHOTO_USAGES,
+  RCD_TYPES,
+  ROLES,
+  VERIFICATIONS,
+} from '@tableau-clair/domain';
 import { z } from 'zod';
 
 // --- Limites -------------------------------------------------------------------------------------------
@@ -225,3 +232,51 @@ export const photoSchema = z.object({
   contentUrl: z.string(),
 });
 export type Photo = z.infer<typeof photoSchema>;
+
+// --- Vue d'ensemble d'un logement et recherche ---------------------------------------------------------------
+
+export const verificationSchema = z.enum(VERIFICATIONS);
+
+export const overviewSchema = z.object({
+  boardCount: z.number().int(),
+  /** Fiabilité du repérage : un équipement sans disjoncteur compte comme « inconnu ». */
+  reliability: z.object({
+    total: z.number().int(),
+    verified: z.number().int(),
+    assumed: z.number().int(),
+    unknown: z.number().int(),
+  }),
+  /** Dernière modification de n'importe quel élément du logement. */
+  lastModified: z
+    .object({
+      at: z.string(),
+      /** Nom affiché (à défaut, adresse) de la personne. */
+      by: z.string().nullable(),
+    })
+    .nullable(),
+});
+export type Overview = z.infer<typeof overviewSchema>;
+
+export const SEARCH_LIMITS = { minLength: 2, maxLength: 100, maxResults: 30 } as const;
+
+export const searchResultSchema = z.object({
+  kind: z.enum(['board', 'element', 'room', 'fixture']),
+  id: z.string().uuid(),
+  title: z.string(),
+  /** Où le trouver : « Tableau principal · Rangée 1 · module 4 », « Cuisine · RDC »… */
+  subtitle: z.string(),
+  boardId: z.string().uuid().nullable(),
+  /** Pour un équipement du plan : le disjoncteur à couper. */
+  breaker: z
+    .object({
+      id: z.string().uuid(),
+      label: z.string(),
+      boardId: z.string().uuid(),
+      boardName: z.string(),
+      rowIndex: z.number().int(),
+      position: z.number().int(),
+    })
+    .nullable(),
+  status: verificationSchema.nullable(),
+});
+export type SearchResult = z.infer<typeof searchResultSchema>;
