@@ -10,6 +10,7 @@ import {
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { plural } from '../home/format';
+import { BreakerPickerSheet } from '../link/BreakerPickerSheet';
 import { usePlan, useProperties, useSelectedProperty } from '../home/queries';
 import { Button, Icon, IconButton, Toast } from '../ui';
 import { FIXTURE_KIND_ICON, defaultFixtureLabel } from './fixture-kinds';
@@ -26,7 +27,15 @@ import {
 } from './sheets';
 import { usePlanActions } from './usePlanActions';
 
-type Dialog = 'palette' | 'floor' | 'newFloor' | 'newRoom' | 'deleteRoom' | 'deleteFixture' | null;
+type Dialog =
+  | 'palette'
+  | 'floor'
+  | 'newFloor'
+  | 'newRoom'
+  | 'deleteRoom'
+  | 'deleteFixture'
+  | 'pickBreaker'
+  | null;
 
 interface Ghost {
   kind: FixtureKind;
@@ -377,6 +386,30 @@ export function PlanPage() {
         }}
         onDelete={() => setDialog('deleteFixture')}
         onShowCircuit={(id) => showCircuit(id)}
+        onPickBreaker={() => setDialog('pickBreaker')}
+        onStatus={(status) => {
+          const id = selectedFixture?.link?.breakerId;
+          if (selectedFixture && id) void actions.link(selectedFixture.id, id, status);
+        }}
+        onUnlink={() => selectedFixture && void actions.unlink(selectedFixture.id)}
+      />
+
+      <BreakerPickerSheet
+        open={dialog === 'pickBreaker' && !!selectedFixture}
+        breakers={breakers}
+        currentId={selectedFixture?.link?.breakerId ?? null}
+        onClose={() => setDialog(null)}
+        onPick={(id) => {
+          setDialog(null);
+          if (!selectedFixture) return;
+          // Un changement de disjoncteur repart d'une liaison à confirmer ; la même liaison garde son statut.
+          const same = selectedFixture.link?.breakerId === id;
+          void actions.link(
+            selectedFixture.id,
+            id,
+            same ? selectedFixture.link!.status : 'assumed',
+          );
+        }}
       />
 
       <RoomSheet
@@ -392,6 +425,8 @@ export function PlanPage() {
           void actions.updateRoom(selectedRoom.id, { x: next.x, y: next.y });
         }}
         onDelete={() => setDialog('deleteRoom')}
+        breakers={breakers}
+        onShowCircuit={(id) => showCircuit(id)}
       />
 
       <PaletteSheet

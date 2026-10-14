@@ -179,6 +179,7 @@ export function EditorPage() {
 
       <ElementSheet
         element={selected?.element ?? null}
+        propertyId={data.propertyId}
         rowIndex={selected?.row.index ?? 0}
         canEdit={canEdit}
         busy={actions.busy}

@@ -10,6 +10,7 @@ import {
   type Fixture,
   type Floor,
   type Plan,
+  type PlanBreaker,
   type Room,
 } from '@tableau-clair/contracts';
 import {
@@ -125,6 +126,48 @@ async function linkOf(db: DbExecutor, fixtureId: string): Promise<LinkRow | null
   return row ?? null;
 }
 
+/** Un équipement avec sa liaison actuelle. */
+export async function loadFixture(db: DbExecutor, fixtureId: string): Promise<Fixture> {
+  const [row] = await db.select().from(fixtures).where(eq(fixtures.id, fixtureId)).limit(1);
+  if (!row) throw notFound('Équipement');
+  return toFixture(row, await linkOf(db, fixtureId));
+}
+
+/** Disjoncteurs d'un logement, dans l'ordre du tableau, avec le nombre d'équipements qu'ils alimentent. */
+export async function loadBreakers(db: DbExecutor, propertyId: string): Promise<PlanBreaker[]> {
+  const rows = await db
+    .select({
+      id: elements.id,
+      label: elements.label,
+      ratingA: elements.ratingA,
+      position: elements.position,
+      photoId: elements.photoId,
+      rowIndex: boardRows.index,
+      boardId: boards.id,
+      boardName: boards.name,
+    })
+    .from(elements)
+    .innerJoin(boardRows, eq(boardRows.id, elements.rowId))
+    .innerJoin(boards, eq(boards.id, boardRows.boardId))
+    .where(and(eq(boards.propertyId, propertyId), eq(elements.kind, 'breaker')))
+    .orderBy(asc(boards.name), asc(boardRows.index), asc(elements.position));
+  const counts = await linkedCounts(
+    db,
+    rows.map((b) => b.id),
+  );
+  return rows.map((b) => ({
+    id: b.id,
+    label: b.label,
+    ratingA: b.ratingA,
+    boardId: b.boardId,
+    boardName: b.boardName,
+    rowIndex: b.rowIndex,
+    position: b.position,
+    linkedCount: counts.get(b.id) ?? 0,
+    photoId: b.photoId,
+  }));
+}
+
 /** Plan complet d'un logement : étages, pièces, équipements avec leur liaison, disjoncteurs. */
 async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan> {
   const floorRows = await db
@@ -165,25 +208,7 @@ async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan> {
     : [];
   const photos = new Map(photoRows.map((p) => [p.id, { width: p.width, height: p.height }]));
 
-  const breakerRows = await db
-    .select({
-      id: elements.id,
-      label: elements.label,
-      ratingA: elements.ratingA,
-      position: elements.position,
-      rowIndex: boardRows.index,
-      boardId: boards.id,
-      boardName: boards.name,
-    })
-    .from(elements)
-    .innerJoin(boardRows, eq(boardRows.id, elements.rowId))
-    .innerJoin(boards, eq(boards.id, boardRows.boardId))
-    .where(and(eq(boards.propertyId, propertyId), eq(elements.kind, 'breaker')))
-    .orderBy(asc(boards.name), asc(boardRows.index), asc(elements.position));
-  const counts = await linkedCounts(
-    db,
-    breakerRows.map((b) => b.id),
-  );
+  const breakers = await loadBreakers(db, propertyId);
 
   return {
     floors: floorRows.map((floor) => {
@@ -198,16 +223,7 @@ async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan> {
           .map((f) => toFixture(f, links.get(f.id) ?? null)),
       };
     }),
-    breakers: breakerRows.map((b) => ({
-      id: b.id,
-      label: b.label,
-      ratingA: b.ratingA,
-      boardId: b.boardId,
-      boardName: b.boardName,
-      rowIndex: b.rowIndex,
-      position: b.position,
-      linkedCount: counts.get(b.id) ?? 0,
-    })),
+    breakers,
   };
 }
 

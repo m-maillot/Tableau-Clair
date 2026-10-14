@@ -9,6 +9,7 @@ import type {
   UpdateFloorInput,
   UpdateRoomInput,
 } from '@tableau-clair/contracts';
+import type { Verification } from '@tableau-clair/domain';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -19,7 +20,9 @@ import {
   deleteFixture,
   deleteFloor,
   deleteRoom,
+  linkFixture,
   NetworkError,
+  unlinkFixture,
   reorderFloors,
   updateFixture,
   updateFloor,
@@ -37,6 +40,7 @@ import {
   removeFixture,
   removeFloor,
   removeRoom,
+  setFixtureLink,
 } from './plan-cache';
 
 export interface Notice {
@@ -55,6 +59,7 @@ const RULES: Record<string, string> = {
   rooms_outside: 'Une pièce sortirait du plan : réduisez-la d’abord.',
   invalid_order: 'L’ordre des étages n’est plus à jour. Réessayez.',
   photo_not_found: 'Image introuvable dans ce logement.',
+  not_a_breaker: 'Seul un disjoncteur peut alimenter un équipement.',
 };
 
 function failureNotice(error: unknown): Notice {
@@ -246,6 +251,22 @@ export function usePlanActions(propertyId: string) {
         request: () =>
           updateFixture(fixtureId, { ...change, version: latestFixture(fixtureId)?.version ?? 1 }),
         reconcile: (plan, fixture) => putFixture(plan, fixture),
+      }),
+
+    /** Relie l'équipement à un disjoncteur (ou change le statut de sa liaison). */
+    link: (fixtureId: string, breakerId: string, status: Verification) =>
+      run<Fixture>({
+        optimistic: (plan) => setFixtureLink(plan, fixtureId, { breakerId, status }),
+        request: () => linkFixture(fixtureId, { breakerId, status }),
+        reconcile: (plan, fixture) => setFixtureLink(plan, fixture.id, fixture.link),
+        refetch: true,
+      }),
+
+    unlink: (fixtureId: string) =>
+      run<Fixture>({
+        optimistic: (plan) => setFixtureLink(plan, fixtureId, null),
+        request: () => unlinkFixture(fixtureId),
+        refetch: true,
       }),
 
     removeFixture: (fixtureId: string) =>

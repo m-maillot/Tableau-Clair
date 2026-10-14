@@ -7,6 +7,7 @@ import {
   fetchCustomModels,
   fetchBoard,
   fetchBoardImpact,
+  fetchBreakerCircuit,
   fetchBoards,
   fetchOverview,
   fetchPlan,
@@ -21,6 +22,7 @@ export const keys = {
   boards: (propertyId: string) => ['properties', propertyId, 'boards'] as const,
   overview: (propertyId: string) => ['properties', propertyId, 'overview'] as const,
   board: (boardId: string) => ['boards', boardId] as const,
+  circuit: (elementId: string) => ['elements', elementId, 'circuit'] as const,
   boardImpact: (boardId: string) => ['boards', boardId, 'impact'] as const,
   search: (propertyId: string, query: string) =>
     ['properties', propertyId, 'search', query] as const,
@@ -138,4 +140,13 @@ export const usePlan = (propertyId: string | undefined) =>
     queryKey: keys.plan(propertyId ?? ''),
     queryFn: () => fetchPlan(propertyId!),
     enabled: !!propertyId,
+  });
+
+/** Circuit d'un disjoncteur : toujours relu à l'ouverture, il change depuis le plan. */
+export const useBreakerCircuit = (elementId: string | undefined) =>
+  useQuery({
+    queryKey: keys.circuit(elementId ?? ''),
+    queryFn: () => fetchBreakerCircuit(elementId!),
+    enabled: !!elementId,
+    staleTime: 0,
   });

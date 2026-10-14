@@ -1,11 +1,13 @@
 import type { Element } from '@tableau-clair/contracts';
 import { plural } from '../home/format';
+import { CircuitSection } from '../link/CircuitSection';
 import { BottomSheet, Icon } from '../ui';
 import { appearanceOf, moduleRange } from './appearance';
 import styles from './ElementSheet.module.css';
 
 interface ElementSheetProps {
   element: Element | null;
+  propertyId: string;
   rowIndex: number;
   /** Faux pour un lecteur : les actions de modification ne sont pas proposées. */
   canEdit: boolean;
@@ -51,6 +53,7 @@ function detailsOf(element: Element): Detail[] {
  */
 export function ElementSheet({
   element,
+  propertyId,
   rowIndex,
   canEdit,
   busy,
@@ -122,6 +125,9 @@ export function ElementSheet({
           </div>
         ))}
       </dl>
+      {element.kind === 'breaker' && (
+        <CircuitSection elementId={element.id} propertyId={propertyId} canEdit={canEdit} />
+      )}
     </BottomSheet>
   );
 }

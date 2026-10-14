@@ -1,6 +1,7 @@
 import {
   fixtureSchema,
   floorSchema,
+  breakerCircuitSchema,
   planSchema,
   roomSchema,
   customModelSchema,
@@ -20,10 +21,12 @@ import {
   type CreateCustomModelInput,
   type CreateFixtureInput,
   type CreateRoomInput,
+  type BreakerCircuit,
   type Fixture,
   type Floor,
   type Plan,
   type Room,
+  type SetFixtureLinkInput,
   type UpdateFixtureInput,
   type UpdateFloorInput,
   type UpdateRoomInput,
@@ -283,3 +286,17 @@ export const createFixture = (roomId: string, input: CreateFixtureInput): Promis
 export const updateFixture = (fixtureId: string, input: UpdateFixtureInput): Promise<Fixture> =>
   sendJson(`/api/fixtures/${fixtureId}`, 'PATCH', input, fixtureSchema);
 export const deleteFixture = (fixtureId: string) => remove(`/api/fixtures/${fixtureId}`);
+
+// --- Liaisons équipement ↔ disjoncteur -----------------------------------------------------------------------
+
+export const linkFixture = (fixtureId: string, input: SetFixtureLinkInput): Promise<Fixture> =>
+  sendJson(`/api/fixtures/${fixtureId}/link`, 'PUT', input, fixtureSchema);
+
+export async function unlinkFixture(fixtureId: string): Promise<Fixture> {
+  const response = await request(`/api/fixtures/${fixtureId}/link`, { method: 'DELETE' });
+  if (!response.ok) throw await failure(response);
+  return fixtureSchema.parse(await response.json());
+}
+
+export const fetchBreakerCircuit = (elementId: string): Promise<BreakerCircuit> =>
+  getJson(`/api/elements/${elementId}/circuit`, breakerCircuitSchema);

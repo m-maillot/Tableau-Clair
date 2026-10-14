@@ -1,9 +1,12 @@
 import type { Fixture, PlanBreaker, PlanFloor, Room } from '@tableau-clair/contracts';
 import { LIMITS } from '@tableau-clair/contracts';
-import { MIN_ROOM_SIZE, type FixtureKind } from '@tableau-clair/domain';
+import { MIN_ROOM_SIZE, type FixtureKind, type Verification } from '@tableau-clair/domain';
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { PhotoField } from '../board-settings/PhotoField';
 import { plural } from '../home/format';
+import { photoUrl } from '../api/client';
+import { breakerName, placeOf } from '../link/place';
+import linkStyles from '../link/link.module.css';
 import { BottomSheet, Button, Icon, Stepper, StatusChip, TextField, TypeChip } from '../ui';
 import { FIXTURE_KIND_ICON, FIXTURE_KIND_LABEL, FIXTURE_KINDS_ORDER } from './fixture-kinds';
 import styles from './sheets.module.css';
@@ -198,7 +201,17 @@ interface FixtureSheetProps {
   onNudge: (dx: number, dy: number) => void;
   onDelete: () => void;
   onShowCircuit: (breakerId: string) => void;
+  /** Ouvre le choix du disjoncteur. */
+  onPickBreaker: () => void;
+  onStatus: (status: Verification) => void;
+  onUnlink: () => void;
 }
+
+const STATUSES: { value: Verification; label: string }[] = [
+  { value: 'verified', label: 'Vérifiée' },
+  { value: 'assumed', label: 'Supposée' },
+  { value: 'unknown', label: 'Inconnue' },
+];
 
 export function FixtureSheet(props: FixtureSheetProps) {
   const { fixture, room, floor, breaker, canEdit } = props;
@@ -219,18 +232,10 @@ export function FixtureSheet(props: FixtureSheetProps) {
           {linked ? (
             <>
               <span>
-                Disjoncteur : <strong>{breaker?.label ?? 'inconnu'}</strong>
-                {breaker?.ratingA ? ` · ${breaker.ratingA} A` : ''}
+                Disjoncteur : <strong>{breaker ? breakerName(breaker) : 'inconnu'}</strong>
+                {breaker ? ` — ${placeOf(breaker)}` : ''}
               </span>
               {fixture.link && <StatusChip status={fixture.link.status} />}
-              <Button
-                size="md"
-                variant="secondary"
-                icon="eye"
-                onClick={() => props.onShowCircuit(linked)}
-              >
-                Voir le circuit
-              </Button>
             </>
           ) : (
             <>
@@ -239,6 +244,50 @@ export function FixtureSheet(props: FixtureSheetProps) {
             </>
           )}
         </div>
+
+        {breaker?.photoId && (
+          <img
+            className={linkStyles.photo}
+            src={photoUrl(breaker.photoId)}
+            alt={`Photo du disjoncteur ${breaker.label}`}
+          />
+        )}
+
+        <div className={styles.actions}>
+          {linked && (
+            <Button
+              size="md"
+              variant="secondary"
+              icon="eye"
+              onClick={() => props.onShowCircuit(linked)}
+            >
+              Voir le circuit
+            </Button>
+          )}
+          {canEdit && (
+            <Button size="md" variant="secondary" icon="plug" onClick={props.onPickBreaker}>
+              {linked ? 'Changer de disjoncteur' : 'Choisir le disjoncteur'}
+            </Button>
+          )}
+          {canEdit && linked && (
+            <Button size="md" variant="danger-soft" onClick={props.onUnlink}>
+              Délier
+            </Button>
+          )}
+        </div>
+
+        {canEdit && linked && fixture.link && (
+          <div className={linkStyles.statuses} role="group" aria-label="Fiabilité de la liaison">
+            {STATUSES.map((st) => (
+              <TypeChip
+                key={st.value}
+                label={st.label}
+                selected={fixture.link?.status === st.value}
+                onClick={() => props.onStatus(st.value)}
+              />
+            ))}
+          </div>
+        )}
 
         {canEdit && (
           <>
@@ -277,12 +326,24 @@ interface RoomSheetProps {
   onResize: (change: { w?: number; h?: number }) => void;
   onNudge: (dx: number, dy: number) => void;
   onDelete: () => void;
+  /** Disjoncteurs du logement : pour dire lesquels couper dans cette pièce. */
+  breakers: PlanBreaker[];
+  onShowCircuit: (breakerId: string) => void;
 }
 
 export function RoomSheet(props: RoomSheetProps) {
   const { room, floor, canEdit } = props;
   if (!room) return null;
-  const count = floor?.fixtures.filter((f) => f.roomId === room.id).length ?? 0;
+  const inside = floor?.fixtures.filter((f) => f.roomId === room.id) ?? [];
+  const count = inside.length;
+  // Un disjoncteur par ligne, avec ce qu'il alimente ici ; les équipements sans lien sont comptés à part.
+  const perBreaker = new Map<string, number>();
+  for (const f of inside) {
+    const id = f.link?.breakerId;
+    if (id) perBreaker.set(id, (perBreaker.get(id) ?? 0) + 1);
+  }
+  const toCut = props.breakers.filter((b) => perBreaker.has(b.id));
+  const unidentified = inside.filter((f) => !f.link?.breakerId).length;
 
   return (
     <BottomSheet
@@ -293,6 +354,40 @@ export function RoomSheet(props: RoomSheetProps) {
       title={room.name}
       description={`${count} ${plural(count, 'équipement', 'équipements')}`}
     >
+      {count > 0 && (
+        <div className={styles.body}>
+          <h3 className={linkStyles.heading}>À couper pour cette pièce</h3>
+          {toCut.length === 0 ? (
+            <p className={linkStyles.empty}>Aucun disjoncteur identifié pour ces équipements.</p>
+          ) : (
+            <ul className={linkStyles.list}>
+              {toCut.map((b) => (
+                <li key={b.id}>
+                  <button
+                    type="button"
+                    className={linkStyles.pick}
+                    onClick={() => props.onShowCircuit(b.id)}
+                  >
+                    <span className={linkStyles.text}>
+                      <span className={linkStyles.title}>{breakerName(b)}</span>
+                      <span className={linkStyles.sub}>{placeOf(b)}</span>
+                    </span>
+                    <span className={linkStyles.sub}>
+                      {perBreaker.get(b.id)}{' '}
+                      {plural(perBreaker.get(b.id) ?? 0, 'équipement ici', 'équipements ici')}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {unidentified > 0 && (
+            <p className={linkStyles.sub}>
+              {unidentified} {plural(unidentified, 'équipement', 'équipements')} à identifier.
+            </p>
+          )}
+        </div>
+      )}
       {canEdit ? (
         <div className={styles.body}>
           <CommitField label="Nom de la pièce" value={room.name} onCommit={props.onRename} />

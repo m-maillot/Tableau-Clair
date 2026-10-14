@@ -87,6 +87,27 @@ function createServer(
     width: number;
   }[] = options.models ?? [];
   let modelSeq = 0;
+  const linked: {
+    id: string;
+    label: string;
+    kind: string;
+    status: string;
+    roomId: string;
+    roomName: string;
+    floorId: string;
+    floorName: string;
+  }[] = [
+    {
+      id: ID(801),
+      label: 'Hotte',
+      kind: 'appliance',
+      status: 'verified',
+      roomId: ID(811),
+      roomName: 'Cuisine',
+      floorId: ID(821),
+      floorName: 'RDC',
+    },
+  ];
 
   const full = (e: El) => ({
     createdAt: NOW,
@@ -199,6 +220,114 @@ function createServer(
         },
         201,
       );
+    }
+    const circuit = url.match(/^\/api\/elements\/([^/]+)\/circuit$/);
+    if (circuit) {
+      return json({
+        breaker: {
+          id: circuit[1],
+          label: 'Disjoncteur',
+          ratingA: 16,
+          boardId: BOARD_ID,
+          boardName: 'Tableau principal',
+          rowIndex: 0,
+          position: 0,
+          linkedCount: linked.length,
+          photoId: null,
+        },
+        fixtures: linked,
+        lastModified: null,
+      });
+    }
+    if (url === `/api/properties/${PROPERTY_ID}/plan`) {
+      return json({
+        breakers: [],
+        floors: [
+          {
+            ...audit,
+            id: ID(821),
+            propertyId: PROPERTY_ID,
+            index: 0,
+            name: 'RDC',
+            width: 1000,
+            height: 700,
+            backgroundImageId: null,
+            backgroundOpacity: 1,
+            backgroundX: 0,
+            backgroundY: 0,
+            backgroundScale: 1,
+            backgroundLocked: false,
+            background: null,
+            rooms: [
+              {
+                ...audit,
+                id: ID(811),
+                floorId: ID(821),
+                name: 'Cuisine',
+                x: 0,
+                y: 0,
+                w: 300,
+                h: 200,
+              },
+            ],
+            fixtures: [
+              {
+                ...audit,
+                id: ID(803),
+                roomId: ID(811),
+                kind: 'socket',
+                label: 'Prise libre',
+                x: 10,
+                y: 10,
+                notes: null,
+                photoId: null,
+                link: null,
+              },
+            ],
+          },
+        ],
+      });
+    }
+    const linkUrl = url.match(/^\/api\/fixtures\/([^/]+)\/link$/);
+    if (linkUrl && method === 'PUT') {
+      linked.push({
+        id: linkUrl[1]!,
+        label: 'Prise libre',
+        kind: 'socket',
+        status: body!.status as string,
+        roomId: ID(811),
+        roomName: 'Cuisine',
+        floorId: ID(821),
+        floorName: 'RDC',
+      });
+      return json({
+        ...audit,
+        id: linkUrl[1],
+        roomId: ID(811),
+        kind: 'socket',
+        label: 'Prise libre',
+        x: 10,
+        y: 10,
+        notes: null,
+        photoId: null,
+        link: { breakerId: ID(502), status: body!.status },
+      });
+    }
+    if (linkUrl && method === 'DELETE') {
+      const index = linked.findIndex((f) => f.id === linkUrl[1]);
+      if (index >= 0) linked.splice(index, 1);
+      return json({
+        ...audit,
+        id: linkUrl[1],
+        roomId: ID(811),
+        kind: 'socket',
+        label: 'Prise libre',
+        x: 10,
+        y: 10,
+        notes: null,
+        photoId: null,
+        link: null,
+      });
     }
     if (url.startsWith(`/api/properties/${PROPERTY_ID}/`)) return json([]);
 
@@ -488,6 +617,57 @@ describe('annuler / rétablir', () => {
 
     await userEvent.keyboard('{Control>}z{/Control}');
     await waitFor(() => expect(server.position('Plaques')).toBe(3));
+  });
+});
+
+describe('circuit d’un disjoncteur', () => {
+  it('délie un équipement depuis la fiche du disjoncteur', async () => {
+    const server = createServer();
+    renderEditor();
+    await select(/^Four/);
+    const circuit = await screen.findByRole('region', { name: 'Circuit alimenté' });
+    expect(circuit).toHaveTextContent('Hotte');
+
+    await userEvent.click(within(circuit).getByRole('button', { name: 'Délier Hotte' }));
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'DELETE',
+        url: `/api/fixtures/${ID(801)}/link`,
+      }),
+    );
+    expect(await screen.findByText('Aucun équipement relié')).toBeInTheDocument();
+  });
+
+  it('relie un équipement du plan, à confirmer', async () => {
+    const server = createServer();
+    renderEditor();
+    await select(/^Four/);
+    const circuit = await screen.findByRole('region', { name: 'Circuit alimenté' });
+    await userEvent.click(within(circuit).getByRole('button', { name: 'Lier un équipement' }));
+
+    const picker = await screen.findByRole('dialog', {
+      name: 'Quel équipement ce disjoncteur alimente-t-il ?',
+    });
+    await userEvent.click(within(picker).getByRole('button', { name: /Prise libre/ }));
+
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'PUT',
+        url: `/api/fixtures/${ID(803)}/link`,
+        body: { breakerId: ID(502), status: 'assumed' },
+      }),
+    );
+    await waitFor(() => expect(circuit).toHaveTextContent('Prise libre'));
+  });
+
+  it('ne propose ni lier ni délier à un lecteur', async () => {
+    createServer({ role: 'viewer' });
+    renderEditor();
+    await select(/^Four/);
+    const circuit = await screen.findByRole('region', { name: 'Circuit alimenté' });
+    expect(circuit).toHaveTextContent('Hotte');
+    expect(within(circuit).queryByRole('button', { name: 'Lier un équipement' })).toBeNull();
+    expect(within(circuit).queryByRole('button', { name: 'Délier Hotte' })).toBeNull();
   });
 });
 

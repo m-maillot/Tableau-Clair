@@ -106,10 +106,63 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname + location.search}</output>;
 }
 
+const CIRCUIT_FIXTURES = [
+  {
+    id: ID(801),
+    label: 'Prise plan de travail',
+    kind: 'socket',
+    status: 'assumed',
+    roomId: ID(811),
+    roomName: 'Cuisine',
+    floorId: ID(821),
+    floorName: 'RDC',
+  },
+  {
+    id: ID(802),
+    label: 'Four',
+    kind: 'appliance',
+    status: 'verified',
+    roomId: ID(811),
+    roomName: 'Cuisine',
+    floorId: ID(821),
+    floorName: 'RDC',
+  },
+  {
+    id: ID(803),
+    label: 'Applique',
+    kind: 'light',
+    status: 'verified',
+    roomId: ID(812),
+    roomName: 'Chambre',
+    floorId: ID(822),
+    floorName: 'Étage',
+  },
+];
+
+function circuitOf(elementId: string) {
+  return {
+    breaker: {
+      id: elementId,
+      label: 'Prises cuisine',
+      ratingA: 16,
+      boardId: BOARD_ID,
+      boardName: 'Tableau principal',
+      rowIndex: 0,
+      position: 0,
+      linkedCount: CIRCUIT_FIXTURES.length,
+      photoId: null,
+    },
+    fixtures: CIRCUIT_FIXTURES,
+    lastModified: { at: new Date().toISOString(), by: 'Martial' },
+  };
+}
+
 function mockServer(board: ReturnType<typeof makeBoard> | null = makeBoard()) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
+      const circuit = url.match(/^\/api\/elements\/([^/]+)\/circuit$/);
+      if (circuit) return json(circuitOf(circuit[1]!));
       if (url === '/api/me')
         return json({ id: ID(1), email: 'martial@racomach.fr', displayName: 'Martial' });
       if (url === '/api/properties') return json([]);
@@ -236,6 +289,35 @@ describe('éditeur de rail — sélection', () => {
     expect(within(sheet).getByText('C')).toBeInTheDocument(); // courbe
     expect(within(sheet).getByText('Legrand')).toBeInTheDocument();
     expect(within(sheet).getByText('2,5 mm²')).toBeInTheDocument();
+  });
+
+  it('liste, dans la fiche d’un disjoncteur, les équipements alimentés par étage et pièce', async () => {
+    mockServer();
+    renderEditor();
+    await userEvent.click(await screen.findByRole('button', { name: /Prises cuisine/ }));
+
+    const circuit = await screen.findByRole('region', { name: 'Circuit alimenté' });
+    expect(circuit).toHaveTextContent('3 équipements alimentés');
+    expect(circuit).toHaveTextContent('RDC · Cuisine');
+    expect(circuit).toHaveTextContent('Étage · Chambre');
+    expect(circuit).toHaveTextContent('Supposée');
+    expect(circuit).toHaveTextContent('Modifié aujourd');
+    expect(within(circuit).getByRole('link', { name: 'Four' })).toHaveAttribute(
+      'href',
+      `/plan?fixture=${ID(802)}`,
+    );
+    expect(within(circuit).getByRole('link', { name: 'Voir sur le plan' })).toHaveAttribute(
+      'href',
+      `/plan?breaker=${ID(502)}`,
+    );
+  });
+
+  it('n’affiche pas de circuit pour un appareil qui n’est pas un disjoncteur', async () => {
+    mockServer();
+    renderEditor();
+    await userEvent.click(await screen.findByRole('button', { name: /Chauffe-eau/ }));
+    await screen.findByRole('region', { name: 'Chauffe-eau' });
+    expect(screen.queryByRole('region', { name: 'Circuit alimenté' })).not.toBeInTheDocument();
   });
 
   it('reflète la sélection dans l’adresse et se désélectionne au second clic', async () => {

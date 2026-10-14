@@ -104,6 +104,8 @@ sont décrits par les schémas Zod de `packages/contracts`.
 | `PATCH`                | `/api/rows/:id` (capacité)                                                 | éditeur           |
 | `POST`                 | `/api/rows/:id/elements`                                                   | éditeur           |
 | `GET` `PATCH` `DELETE` | `/api/elements/:id`                                                        | membre / éditeur  |
+| `GET`                  | `/api/elements/:id/circuit` (équipements alimentés, par étage et pièce)    | membre            |
+| `PUT` `DELETE`         | `/api/fixtures/:id/link` (relier / délier un équipement à un disjoncteur)  | éditeur           |
 | `POST`                 | `/api/properties/:id/photos?usage=…` (corps = image)                       | éditeur           |
 | `GET`                  | `/api/photos/:id` (métadonnées)                                            | membre            |
 | `GET`                  | `/api/photos/:id/content` (302 vers URL signée)                            | membre            |
@@ -148,6 +150,20 @@ le navigateur et le serveur :
   les autres sont neutres, ceux sans disjoncteur sont en pointillés avec « ? ».
 
 Hors périmètre de cet écran : lier un équipement à un disjoncteur (ticket « Liaisons »).
+
+### Liaisons équipement ↔ disjoncteur
+
+Un équipement n'a qu'**un seul** disjoncteur ; le relier à un autre remplace l'ancien lien. Chaque
+liaison porte un statut **vérifiée / supposée / inconnue** (nouvelle liaison : supposée).
+
+- **Depuis l'équipement** (fiche sur le plan) : choisir ou changer le disjoncteur, régler le statut,
+  délier, voir le circuit. La photo du disjoncteur et sa position (tableau, rangée, module) s'affichent.
+- **Depuis le disjoncteur** (fiche dans l'éditeur de rail) : équipements alimentés par étage puis par
+  pièce, délier, lier un équipement du plan, « Voir sur le plan ».
+- **Depuis une pièce** : disjoncteurs à couper et nombre d'équipements sans lien.
+- Seul un élément de type disjoncteur du même logement peut alimenter un équipement (404 sinon pour
+  un élément étranger, 422 `not_a_breaker` pour un autre type). Supprimer le disjoncteur laisse les
+  équipements et passe leur liaison à « inconnue ».
 
 ### Édition du rail
 

@@ -173,6 +173,7 @@ function createServer(
         rowIndex: 0,
         position: 3,
         linkedCount: 1,
+        photoId: null,
       },
       {
         id: ID(401),
@@ -183,6 +184,7 @@ function createServer(
         rowIndex: 0,
         position: 4,
         linkedCount: 1,
+        photoId: null,
       },
     ],
     floors: state.floors
@@ -327,6 +329,17 @@ function createServer(
       };
       state.fixtures.push(fixture);
       return json(entity(fixture), 201);
+    }
+    m = url.match(/^\/api\/fixtures\/([^/]+)\/link$/);
+    if (m && method === 'PUT') {
+      const fixture = state.fixtures.find((f) => f.id === m![1])!;
+      fixture.link = { breakerId: body!.breakerId as string, status: body!.status as string };
+      return json(entity(fixture));
+    }
+    if (m && method === 'DELETE') {
+      const fixture = state.fixtures.find((f) => f.id === m![1])!;
+      fixture.link = null;
+      return json(entity(fixture));
     }
     m = url.match(/^\/api\/fixtures\/([^/]+)$/);
     if (m && method === 'PATCH') {
@@ -491,7 +504,7 @@ describe('affichage', () => {
     renderPlan(`?fixture=${ID(504)}`);
     expect(await screen.findByRole('region', { name: 'Applique' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Étage', selected: true })).toBeInTheDocument();
-    expect(screen.getByTestId('location')).not.toHaveTextContent('fixture=');
+    await waitFor(() => expect(screen.getByTestId('location')).not.toHaveTextContent('fixture='));
   });
 });
 
@@ -569,6 +582,112 @@ describe('équipement sélectionné', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /Prise mystère/ })).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe('liaison avec un disjoncteur', () => {
+  async function open(label: RegExp) {
+    await userEvent.click(await screen.findByRole('button', { name: label }));
+    return screen.findByRole('region', { name: /Prise plan de travail|Plafonnier|Prise mystère/ });
+  }
+
+  it('relie un équipement à identifier au disjoncteur choisi, à confirmer', async () => {
+    const server = createServer();
+    renderPlan();
+    const sheet = await open(/Prise mystère/);
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Choisir le disjoncteur' }));
+
+    const picker = await screen.findByRole('dialog', { name: 'Quel disjoncteur l’alimente ?' });
+    await userEvent.click(within(picker).getByRole('button', { name: /Prises cuisine · 16 A/ }));
+
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'PUT',
+        url: `/api/fixtures/${ID(503)}/link`,
+        body: { breakerId: BREAKER, status: 'assumed' },
+      }),
+    );
+    await waitFor(() => expect(sheet).toHaveTextContent('Supposée'));
+    expect(sheet).toHaveTextContent('Prises cuisine · 16 A');
+  });
+
+  it('filtre les disjoncteurs par libellé', async () => {
+    createServer();
+    renderPlan();
+    const sheet = await open(/Prise mystère/);
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Choisir le disjoncteur' }));
+    const picker = await screen.findByRole('dialog', { name: 'Quel disjoncteur l’alimente ?' });
+
+    await userEvent.type(within(picker).getByLabelText('Filtrer'), 'eclairage');
+    expect(within(picker).getByRole('button', { name: /Éclairage RDC/ })).toBeInTheDocument();
+    expect(
+      within(picker).queryByRole('button', { name: /Prises cuisine/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('change le statut d’une liaison, par exemple après l’avoir testée', async () => {
+    const server = createServer();
+    renderPlan();
+    const sheet = await open(/Plafonnier/);
+    expect(sheet).toHaveTextContent('Supposée');
+
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Vérifiée' }));
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'PUT',
+        body: { breakerId: ID(401), status: 'verified' },
+      }),
+    );
+  });
+
+  it('délie un équipement : il repasse à identifier', async () => {
+    const server = createServer();
+    renderPlan();
+    const sheet = await open(/Prise plan de travail/);
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Délier' }));
+
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'DELETE',
+        url: `/api/fixtures/${ID(501)}/link`,
+      }),
+    );
+    await waitFor(() => expect(sheet).toHaveTextContent('Disjoncteur à identifier'));
+    expect(within(sheet).queryByRole('button', { name: 'Délier' })).not.toBeInTheDocument();
+  });
+
+  it('ne propose pas de lier à un lecteur', async () => {
+    createServer({ role: 'viewer' });
+    renderPlan();
+    const sheet = await open(/Prise plan de travail/);
+    expect(sheet).toHaveTextContent('Prises cuisine · 16 A');
+    expect(within(sheet).queryByRole('button', { name: 'Délier' })).not.toBeInTheDocument();
+    expect(
+      within(sheet).queryByRole('button', { name: 'Changer de disjoncteur' }),
+    ).not.toBeInTheDocument();
+    // Il peut en revanche voir le circuit.
+    expect(within(sheet).getByRole('button', { name: 'Voir le circuit' })).toBeInTheDocument();
+  });
+
+  it('indique, depuis une pièce, les disjoncteurs à couper', async () => {
+    createServer();
+    renderPlan();
+    await userEvent.click(await screen.findByRole('button', { name: 'Pièce Cuisine' }));
+    const sheet = await screen.findByRole('region', { name: 'Cuisine' });
+    expect(sheet).toHaveTextContent('À couper pour cette pièce');
+
+    await userEvent.click(within(sheet).getByRole('button', { name: /Éclairage RDC · 10 A/ }));
+    expect(screen.getByTestId('location')).toHaveTextContent(`breaker=${ID(401)}`);
+  });
+
+  it('signale les équipements d’une pièce sans disjoncteur', async () => {
+    createServer();
+    renderPlan();
+    await userEvent.click(await screen.findByRole('tab', { name: 'Étage' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Pièce Chambre' }));
+    const sheet = await screen.findByRole('region', { name: 'Chambre' });
+    expect(sheet).toHaveTextContent('Aucun disjoncteur identifié');
+    expect(sheet).toHaveTextContent('1 équipement à identifier');
   });
 });
 

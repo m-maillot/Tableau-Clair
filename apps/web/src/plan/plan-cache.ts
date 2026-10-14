@@ -89,3 +89,26 @@ export function findRoom(plan: Plan, roomId: string) {
   }
   return null;
 }
+
+/**
+ * Applique une liaison (ou son retrait) à un équipement et recalcule les compteurs des
+ * disjoncteurs concernés, sans attendre le serveur.
+ */
+export function setFixtureLink(plan: Plan, fixtureId: string, link: Fixture['link']): Plan {
+  const found = findFixture(plan, fixtureId);
+  if (!found) return plan;
+  const from = found.fixture.link?.breakerId ?? null;
+  const to = link?.breakerId ?? null;
+  const next = putFixture(plan, { ...found.fixture, link });
+  if (from === to) return next;
+  return {
+    ...next,
+    breakers: next.breakers.map((b) =>
+      b.id === from
+        ? { ...b, linkedCount: Math.max(0, b.linkedCount - 1) }
+        : b.id === to
+          ? { ...b, linkedCount: b.linkedCount + 1 }
+          : b,
+    ),
+  };
+}

@@ -401,6 +401,8 @@ export const planBreakerSchema = z.object({
   rowIndex: z.number().int(),
   position: z.number().int(),
   linkedCount: z.number().int(),
+  /** Photo du disjoncteur, pour le reconnaître devant le tableau. */
+  photoId: z.string().uuid().nullable(),
 });
 export type PlanBreaker = z.infer<typeof planBreakerSchema>;
 
@@ -412,6 +414,32 @@ export type Plan = z.infer<typeof planSchema>;
 
 const coordinate = z.number().finite().min(-PLAN_LIMITS.maxCanvas).max(PLAN_LIMITS.maxCanvas);
 const canvasSize = z.number().min(PLAN_LIMITS.minCanvas).max(PLAN_LIMITS.maxCanvas);
+
+/** Relie un équipement à un disjoncteur (remplace la liaison existante). */
+export const setFixtureLinkSchema = z
+  .object({ breakerId: z.string().uuid(), status: verificationSchema })
+  .strict();
+export type SetFixtureLinkInput = z.infer<typeof setFixtureLinkSchema>;
+
+/** Circuit d'un disjoncteur : les équipements qu'il alimente, avec leur emplacement. */
+export const breakerCircuitSchema = z.object({
+  breaker: planBreakerSchema,
+  fixtures: z.array(
+    z.object({
+      id: z.string().uuid(),
+      label: z.string(),
+      kind: fixtureKindSchema,
+      status: verificationSchema,
+      roomId: z.string().uuid(),
+      roomName: z.string(),
+      floorId: z.string().uuid(),
+      floorName: z.string(),
+    }),
+  ),
+  /** Dernière modification du disjoncteur ou d'une de ses liaisons. */
+  lastModified: lastModifiedSchema,
+});
+export type BreakerCircuit = z.infer<typeof breakerCircuitSchema>;
 
 export const createFloorSchema = z.object({ name }).strict();
 export type CreateFloorInput = z.infer<typeof createFloorSchema>;
