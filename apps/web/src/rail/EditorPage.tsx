@@ -1,10 +1,10 @@
 import type { Element } from '@tableau-clair/contracts';
-import { maxWidthAt } from '@tableau-clair/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { lastModifiedLabel, plural } from '../home/format';
+import { lastModifiedLabel } from '../home/format';
 import { useBoard, useProperties } from '../home/queries';
-import { BottomSheet, IconButton } from '../ui';
+import { IconButton } from '../ui';
+import { AddElementSheet } from './AddElementSheet';
 import { DeleteElementSheet } from './DeleteElementSheet';
 import { ElementSheet } from './ElementSheet';
 import styles from './EditorPage.module.css';
@@ -111,8 +111,6 @@ export function EditorPage() {
     setSlot(slot?.rowIndex === next.rowIndex && slot.position === next.position ? null : next);
   };
 
-  const slotRow = slot ? data.rows.find((r) => r.index === slot.rowIndex) : undefined;
-  const available = slot && slotRow ? maxWidthAt(slotRow, slot.position) : 0;
   const hasSheet = !!selected || !!slot;
   const notice = actions.notice;
 
@@ -214,24 +212,20 @@ export function EditorPage() {
         }}
       />
 
-      <BottomSheet
-        open={!!slot && !selected}
-        modal={false}
-        floating
+      <AddElementSheet
+        board={data}
+        slot={slot && !selected ? slot : null}
+        propertyId={data.propertyId}
+        busy={actions.busy}
         onClose={() => setSlot(null)}
-        title="Module libre"
-        description={
-          slot
-            ? `Rangée ${slot.rowIndex + 1} · module ${slot.position + 1} · ${available} ${plural(
-                available,
-                'module disponible',
-                'modules disponibles',
-              )}`
-            : undefined
-        }
-      >
-        <p className={styles.note}>L'ajout d'appareils arrive bientôt.</p>
-      </BottomSheet>
+        onSubmit={async (rowId, input) => {
+          const created = await actions.add(rowId, input);
+          if (!created) return false;
+          setSlot(null);
+          setParams({ element: created.id }, { replace: true });
+          return true;
+        }}
+      />
     </main>
   );
 }

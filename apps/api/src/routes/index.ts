@@ -2,6 +2,7 @@ import type { Database } from '@tableau-clair/db';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { HttpError, unauthorized } from '../http';
 import { registerBoardRoutes } from './boards';
+import { registerCustomModelRoutes } from './custom-models';
 import { registerElementRoutes } from './elements';
 import type { ObjectStorage } from '../storage/object-storage';
 import { registerOverviewRoutes } from './overview';
@@ -48,6 +49,7 @@ export function registerApiRoutes(app: FastifyInstance, options: ApiRoutesOption
     registerBoardRoutes(api, options.db);
     registerElementRoutes(api, options.db);
     registerOverviewRoutes(api, options.db);
+    registerCustomModelRoutes(api, options.db);
     registerPhotoRoutes(api, options.db, options.storage);
   });
 }

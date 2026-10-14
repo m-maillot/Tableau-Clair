@@ -427,7 +427,7 @@ describe('photo', () => {
     settings();
     await screen.findByLabelText('Nom');
 
-    await userEvent.upload(screen.getByLabelText('Fichier de la photo du tableau'), file());
+    await userEvent.upload(screen.getByLabelText('Fichier : Photo du tableau'), file());
     const image = await screen.findByRole('img', { name: 'Photo du tableau' });
     expect(image).toHaveAttribute('src', `/api/photos/${ID(900)}/content`);
     expect(calls.some((c) => c.url.includes('/photos?usage=board'))).toBe(true);
@@ -442,7 +442,7 @@ describe('photo', () => {
     settings();
     await screen.findByLabelText('Nom');
 
-    await userEvent.upload(screen.getByLabelText('Fichier de la photo du tableau'), file());
+    await userEvent.upload(screen.getByLabelText('Fichier : Photo du tableau'), file());
     expect(await screen.findByText(/JPEG, PNG ou WebP/)).toBeInTheDocument();
   });
 
@@ -451,7 +451,7 @@ describe('photo', () => {
     settings();
     await screen.findByLabelText('Nom');
 
-    await userEvent.upload(screen.getByLabelText('Fichier de la photo du tableau'), file());
+    await userEvent.upload(screen.getByLabelText('Fichier : Photo du tableau'), file());
     await screen.findByRole('img', { name: 'Photo du tableau' });
     await userEvent.click(screen.getAllByRole('button', { name: 'Annuler' })[0]!);
 

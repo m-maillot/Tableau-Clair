@@ -122,6 +122,14 @@ Conventions :
 - Les écritures sur une rangée sont sérialisées (verrou de ligne) : deux ajouts simultanés au même
   emplacement ne peuvent pas réussir tous les deux.
 
+### Ajout d'un appareil
+
+Un module libre ouvre la feuille « Ajouter un appareil » : types standards avec leur largeur (grisés
+quand ils ne tiennent pas dans l'espace restant), libellé, calibre, largeur bornée à l'espace libre,
+photo facultative. « Autre appareil… » demande nom, rôle, marque, modèle / référence et modules ;
+il peut être **enregistré comme modèle du compte** et réutilisé dans tous les logements
+(« Mes modèles »). L'ajout entre dans l'historique : il s'annule et se rétablit.
+
 ### Édition du rail
 
 Les actions de la feuille de détail (← →, changer de rangée, supprimer) sont validées localement par

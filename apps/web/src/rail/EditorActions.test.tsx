@@ -16,6 +16,7 @@ const R0 = ID(300);
 const R1 = ID(301);
 const R2 = ID(302);
 const NOW = '2026-10-14T10:00:00.000Z';
+const audit = { createdAt: NOW, updatedAt: NOW, updatedBy: ID(1), version: 1 };
 
 interface El {
   id: string;
@@ -50,7 +51,21 @@ const el = (
 });
 
 /** Serveur simulé et à état : applique les écritures, contrôle la version, journalise les appels. */
-function createServer(options: { role?: 'owner' | 'viewer'; failNext?: number } = {}) {
+function createServer(
+  options: {
+    role?: 'owner' | 'viewer';
+    failNext?: number;
+    models?: {
+      id: string;
+      label: string;
+      role: string | null;
+      brand: string | null;
+      model: string | null;
+      width: number;
+    }[];
+    rejectCreate?: boolean;
+  } = {},
+) {
   const capacity = 12;
   const elements: El[] = [
     el(1, R0, 0, 2, 'Différentiel', { kind: 'rcd', ratingA: 40 }),
@@ -63,6 +78,15 @@ function createServer(options: { role?: 'owner' | 'viewer'; failNext?: number } 
   const calls: { method: string; url: string; body?: Record<string, unknown> }[] = [];
   let created = 0;
   let failures = options.failNext ?? 0;
+  const models: {
+    id: string;
+    label: string;
+    role: string | null;
+    brand: string | null;
+    model: string | null;
+    width: number;
+  }[] = options.models ?? [];
+  let modelSeq = 0;
 
   const full = (e: El) => ({
     createdAt: NOW,
@@ -140,6 +164,42 @@ function createServer(options: { role?: 'owner' | 'viewer'; failNext?: number } 
       ]);
     }
     if (url === `/api/boards/${BOARD_ID}`) return json(board());
+    if (url === '/api/custom-models' && method === 'GET')
+      return json(models.map((m) => ({ ...audit, ...m })));
+    if (url === '/api/custom-models' && method === 'POST') {
+      modelSeq += 1;
+      const made = {
+        id: ID(700 + modelSeq),
+        role: null,
+        brand: null,
+        model: null,
+        ...(body as object),
+      } as (typeof models)[number];
+      models.push(made);
+      return json({ ...audit, ...made }, 201);
+    }
+    const modelDelete = url.match(/^\/api\/custom-models\/([^/]+)$/);
+    if (modelDelete && method === 'DELETE') {
+      const index = models.findIndex((m) => m.id === modelDelete[1]);
+      if (index >= 0) models.splice(index, 1);
+      return new Response(null, { status: 204 });
+    }
+    if (url.startsWith(`/api/properties/${PROPERTY_ID}/photos`)) {
+      return json(
+        {
+          ...audit,
+          id: ID(900),
+          propertyId: PROPERTY_ID,
+          usage: 'element',
+          mimeType: 'image/webp',
+          width: 10,
+          height: 10,
+          sizeBytes: 10,
+          contentUrl: `/api/photos/${ID(900)}/content`,
+        },
+        201,
+      );
+    }
     if (url.startsWith(`/api/properties/${PROPERTY_ID}/`)) return json([]);
 
     const patch = url.match(/^\/api\/elements\/([^/]+)$/);
@@ -164,6 +224,7 @@ function createServer(options: { role?: 'owner' | 'viewer'; failNext?: number } 
     }
     const create = url.match(/^\/api\/rows\/([^/]+)\/elements$/);
     if (create && method === 'POST') {
+      if (options.rejectCreate) return json({ code: 'overlap', message: 'x' }, 422);
       created += 1;
       const made = el(
         100 + created,
@@ -440,5 +501,236 @@ describe('droits', () => {
     expect(screen.queryByRole('button', { name: 'Déplacer à droite' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Supprimer l’élément' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Annuler/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('ajout d’un appareil', () => {
+  const openSlot = async (name: string) => {
+    await userEvent.click(await screen.findByRole('button', { name }));
+    return screen.findByRole('dialog', { name: 'Ajouter un appareil' });
+  };
+  const SLOT_5 = 'Rangée 1, module libre 5, ajouter un appareil'; // 2 modules libres (5 et 6)
+  const SLOT_6 = 'Rangée 1, module libre 6, ajouter un appareil'; // 1 module libre
+
+  it('propose les types avec leur largeur et grise ceux qui ne tiennent pas', async () => {
+    createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_6);
+    expect(dialog).toHaveAccessibleDescription('Rangée 1 · module 6 · 1 module disponible');
+
+    expect(within(dialog).getByRole('button', { name: 'Disjoncteur · 1' })).toBeEnabled();
+    const rcd = within(dialog).getByRole('button', { name: /Différentiel · 2/ });
+    expect(rcd).toBeDisabled();
+    expect(rcd).toHaveAccessibleName(/2 modules requis, 1 disponible/);
+    expect(within(dialog).getByRole('button', { name: /Parafoudre · 2/ })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: /Réserve · 1/ })).toBeEnabled();
+    expect(within(dialog).getByRole('button', { name: 'Autre appareil…' })).toBeEnabled();
+  });
+
+  it('active les types de 2 modules quand la place suffit', async () => {
+    createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+    expect(within(dialog).getByRole('button', { name: /Différentiel · 2/ })).toBeEnabled();
+  });
+
+  it('ajoute un disjoncteur avec libellé et calibre, puis le sélectionne', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+
+    const submit = within(dialog).getByRole('button', { name: 'Ajouter au module 5' });
+    expect(submit).toBeDisabled(); // le libellé est obligatoire
+
+    await userEvent.type(within(dialog).getByLabelText('Libellé'), 'Prises garage');
+    await userEvent.click(within(dialog).getByRole('button', { name: '20' }));
+    await userEvent.click(submit);
+
+    expect(await screen.findByRole('region', { name: 'Prises garage' })).toBeInTheDocument();
+    expect(server.writes()[0]).toMatchObject({
+      method: 'POST',
+      body: { position: 4, width: 1, kind: 'breaker', label: 'Prises garage', ratingA: 20 },
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '« Prises garage » ajouté : module 5.',
+    );
+    expect(screen.queryByRole('dialog', { name: 'Ajouter un appareil' })).not.toBeInTheDocument();
+  });
+
+  it('borne la largeur à l’espace disponible', async () => {
+    createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+
+    const more = within(dialog).getByRole('button', { name: 'Augmenter : Largeur' });
+    await userEvent.click(more);
+    expect(within(dialog).getByRole('status')).toHaveTextContent('2');
+    expect(more).toBeDisabled();
+  });
+
+  it('pose un différentiel sur 2 modules avec son calibre', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+
+    await userEvent.click(within(dialog).getByRole('button', { name: /Différentiel · 2/ }));
+    await userEvent.type(within(dialog).getByLabelText('Libellé'), 'Différentiel 40 A');
+    await userEvent.click(within(dialog).getByRole('button', { name: '40' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Ajouter au module 5' }));
+
+    await waitFor(() => expect(server.writes()).toHaveLength(1));
+    expect(server.writes()[0]!.body).toMatchObject({ kind: 'rcd', width: 2, ratingA: 40 });
+  });
+
+  it('accepte une réserve sans libellé', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_6);
+
+    await userEvent.click(within(dialog).getByRole('button', { name: /Réserve · 1/ }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Ajouter au module 6' }));
+
+    await waitFor(() => expect(server.writes()).toHaveLength(1));
+    expect(server.writes()[0]!.body).toMatchObject({ kind: 'spare', label: 'Réserve' });
+  });
+
+  it('crée un appareil personnalisé avec ses champs', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Autre appareil…' }));
+    await userEvent.type(within(dialog).getByLabelText('Nom'), 'Borne de recharge');
+    await userEvent.type(within(dialog).getByLabelText('Rôle'), 'Voiture électrique');
+    await userEvent.type(within(dialog).getByLabelText('Marque'), 'Wallbox');
+    await userEvent.type(within(dialog).getByLabelText('Modèle / référence'), 'Pulsar');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Ajouter au module 5' }));
+
+    await waitFor(() => expect(server.writes()).toHaveLength(1));
+    expect(server.writes()[0]!.body).toMatchObject({
+      kind: 'custom',
+      label: 'Borne de recharge',
+      role: 'Voiture électrique',
+      brand: 'Wallbox',
+      model: 'Pulsar',
+    });
+    expect(server.writes().some((c) => c.url === '/api/custom-models')).toBe(false); // pas enregistré
+  });
+
+  it('enregistre le modèle dans le compte quand on le demande', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Autre appareil…' }));
+    await userEvent.type(within(dialog).getByLabelText('Nom'), 'Alarme');
+    await userEvent.click(
+      within(dialog).getByLabelText('Enregistrer comme modèle réutilisable dans mon compte'),
+    );
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Ajouter au module 5' }));
+
+    await waitFor(() => expect(server.writes()).toHaveLength(2));
+    expect(server.writes()[0]).toMatchObject({
+      url: '/api/custom-models',
+      body: { label: 'Alarme', width: 1 },
+    });
+    expect(server.writes()[1]!.url).toMatch(/\/elements$/);
+  });
+
+  it('réutilise un modèle enregistré, et permet de le supprimer', async () => {
+    const server = createServer({
+      models: [
+        {
+          id: ID(701),
+          label: 'Borne VE',
+          role: 'Recharge',
+          brand: 'Wallbox',
+          model: 'Pulsar',
+          width: 2,
+        },
+      ],
+    });
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+
+    const chip = await within(dialog).findByRole('button', { name: 'Borne VE · 2' });
+    await userEvent.click(chip);
+    expect(within(dialog).getByLabelText('Nom')).toHaveValue('Borne VE');
+    expect(within(dialog).getByLabelText('Marque')).toHaveValue('Wallbox');
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Supprimer ce modèle' }));
+    await waitFor(() =>
+      expect(
+        server.calls.some((c) => c.method === 'DELETE' && c.url.includes('custom-models')),
+      ).toBe(true),
+    );
+    await waitFor(() =>
+      expect(
+        within(dialog).queryByRole('button', { name: 'Borne VE · 2' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('ajoute une photo facultative', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+
+    await userEvent.type(within(dialog).getByLabelText('Libellé'), 'Prises garage');
+    await userEvent.upload(
+      within(dialog).getByLabelText("Fichier : Photo de l'appareil"),
+      new File([new Uint8Array([1])], 'p.jpg', { type: 'image/jpeg' }),
+    );
+    await within(dialog).findByRole('img', { name: "Photo de l'appareil" });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Ajouter au module 5' }));
+
+    await waitFor(() =>
+      expect(server.writes().some((c) => c.url.endsWith('/elements'))).toBe(true),
+    );
+    const post = server.writes().find((c) => c.url.endsWith('/elements'))!;
+    expect(post.body).toMatchObject({ photoId: ID(900) });
+    expect(server.calls.some((c) => c.url.includes('/photos?usage=element'))).toBe(true);
+  });
+
+  it('annule puis rétablit un ajout', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+    await userEvent.type(within(dialog).getByLabelText('Libellé'), 'Prises garage');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Ajouter au module 5' }));
+    await screen.findByRole('region', { name: 'Prises garage' });
+
+    await userEvent.click(undoButton());
+    await waitFor(() =>
+      expect(server.elements.some((e) => e.label === 'Prises garage')).toBe(false),
+    );
+    expect(server.writes().at(-1)).toMatchObject({ method: 'DELETE' });
+
+    await userEvent.click(redoButton());
+    await waitFor(() =>
+      expect(server.elements.some((e) => e.label === 'Prises garage')).toBe(true),
+    );
+    expect(server.writes().filter((c) => c.method === 'POST')).toHaveLength(2);
+  });
+
+  it('signale un refus du serveur sans rien ajouter', async () => {
+    createServer({ rejectCreate: true });
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+    await userEvent.type(within(dialog).getByLabelText('Libellé'), 'Prises garage');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Ajouter au module 5' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('refusé cette modification');
+    expect(screen.queryByRole('button', { name: /^Prises garage/ })).not.toBeInTheDocument();
+  });
+
+  it('ferme l’ajout avec Annuler sans rien envoyer', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await openSlot(SLOT_5);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Annuler' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(server.writes()).toHaveLength(0);
   });
 });

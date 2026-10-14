@@ -6,6 +6,11 @@ import styles from './PhotoField.module.css';
 interface PhotoFieldProps {
   propertyId: string;
   photoId: string | null;
+  /** Usage de la photo côté stockage (taille maximale, rangement). */
+  usage?: 'board' | 'element' | 'fixture' | 'floor_background';
+  /** Intitulé affiché et lu (« Photo du tableau », « Photo de l'appareil »). */
+  title?: string;
+  hint?: string;
   /** Appelé avec l'identifiant de la nouvelle photo (ou `null` pour la retirer). */
   onChange: (photoId: string | null, uploaded?: boolean) => void;
 }
@@ -22,7 +27,14 @@ function uploadError(error: unknown): string {
   return "L'envoi de la photo a échoué. Réessayez.";
 }
 
-export function PhotoField({ propertyId, photoId, onChange }: PhotoFieldProps) {
+export function PhotoField({
+  propertyId,
+  photoId,
+  usage = 'board',
+  title = 'Photo du tableau',
+  hint = 'Aide à retrouver le coffret. Redimensionnée, sans géolocalisation.',
+  onChange,
+}: PhotoFieldProps) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -32,7 +44,7 @@ export function PhotoField({ propertyId, photoId, onChange }: PhotoFieldProps) {
     setError(undefined);
     setBusy(true);
     try {
-      const photo = await uploadPhoto(propertyId, file, 'board');
+      const photo = await uploadPhoto(propertyId, file, usage);
       onChange(photo.id, true);
     } catch (problem) {
       setError(uploadError(problem));
@@ -47,16 +59,14 @@ export function PhotoField({ propertyId, photoId, onChange }: PhotoFieldProps) {
       <div className={styles.row}>
         <div className={styles.thumb}>
           {photoId ? (
-            <img src={photoUrl(photoId)} alt="Photo du tableau" className={styles.image} />
+            <img src={photoUrl(photoId)} alt={title} className={styles.image} />
           ) : (
             <Icon name="camera" size={28} strokeWidth={2} />
           )}
         </div>
         <div className={styles.text}>
-          <p className={styles.title}>Photo du tableau</p>
-          <p className={styles.hint}>
-            Aide à retrouver le coffret. Redimensionnée, sans géolocalisation.
-          </p>
+          <p className={styles.title}>{title}</p>
+          <p className={styles.hint}>{hint}</p>
         </div>
         <div className={styles.actions}>
           <Button
@@ -80,7 +90,7 @@ export function PhotoField({ propertyId, photoId, onChange }: PhotoFieldProps) {
         accept="image/jpeg,image/png,image/webp"
         className="sr-only"
         tabIndex={-1}
-        aria-label="Fichier de la photo du tableau"
+        aria-label={`Fichier : ${title}`}
         onChange={(event) => void onFile(event.target.files?.[0])}
       />
       {error && (

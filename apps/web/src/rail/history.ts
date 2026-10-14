@@ -7,7 +7,8 @@ export interface Place {
 
 export type Command =
   | { kind: 'move'; elementId: string; before: Place; after: Place; label: string }
-  | { kind: 'remove'; element: Element; label: string };
+  | { kind: 'remove'; element: Element; label: string }
+  | { kind: 'add'; element: Element; label: string };
 
 export interface History {
   past: Command[];
@@ -44,7 +45,7 @@ export function remapElement(history: History, oldId: string, restored: Element)
     if (command.kind === 'move' && command.elementId === oldId) {
       return { ...command, elementId: restored.id };
     }
-    if (command.kind === 'remove' && command.element.id === oldId) {
+    if ((command.kind === 'remove' || command.kind === 'add') && command.element.id === oldId) {
       return { ...command, element: restored };
     }
     return command;

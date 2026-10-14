@@ -304,6 +304,42 @@ export function useRailActions(boardId: string) {
       }
     });
 
+  /** Ajoute un appareil sur un module libre. Retourne l'élément créé, ou `null` si refusé. */
+  const add = (rowId: string, input: CreateElementInput) =>
+    enqueue(async (): Promise<Element | null> => {
+      const board = getBoard();
+      const target = board?.rows.find((r) => r.id === rowId);
+      if (!board || !target) {
+        refuse('Rangée introuvable.');
+        return null;
+      }
+      const problem = validateSpan(rowState(target), input);
+      if (problem) {
+        refuse(placementMessage(problem, board));
+        return null;
+      }
+      try {
+        const created = await createElement(rowId, input);
+        const current = getBoard();
+        if (current) setBoard(putElement(current, created));
+        commit(
+          record(historyRef.current, {
+            kind: 'add',
+            element: created,
+            label: `Ajout de « ${created.label} »`,
+          }),
+        );
+        setNotice({
+          tone: 'info',
+          text: `« ${created.label} » ajouté : ${moduleRange(created.position, created.width)}.`,
+        });
+        return created;
+      } catch (error) {
+        setNotice(failureNotice(error));
+        return null;
+      }
+    });
+
   const remove = (element: Element) =>
     enqueue(async () => {
       if (!(await applyRemove(element.id))) return false;
@@ -325,6 +361,15 @@ export function useRailActions(boardId: string) {
 
       if (command.kind === 'move') {
         if (await applyMove(command.elementId, command.before)) {
+          commit(afterUndo(historyRef.current, command));
+          setNotice({ tone: 'info', text: `Annulé : ${command.label.toLowerCase()}.` });
+        }
+        return;
+      }
+
+      // Annuler un ajout : l'appareil est retiré.
+      if (command.kind === 'add') {
+        if (await applyRemove(command.element.id)) {
           commit(afterUndo(historyRef.current, command));
           setNotice({ tone: 'info', text: `Annulé : ${command.label.toLowerCase()}.` });
         }
@@ -366,6 +411,31 @@ export function useRailActions(boardId: string) {
       const command: Command | undefined = nextRedo(historyRef.current);
       if (!command) return;
 
+      if (command.kind === 'add') {
+        // Rétablir un ajout recrée l'appareil (nouvel identifiant) à sa place.
+        const board = getBoard();
+        const target = board?.rows.find((r) => r.id === command.element.rowId);
+        if (!board || !target) {
+          refuse('La rangée de cet élément n’existe plus.');
+          return;
+        }
+        if (validateSpan(rowState(target), command.element)) {
+          refuse('Impossible de rétablir : l’emplacement est occupé.');
+          return;
+        }
+        try {
+          const created = await createElement(target.id, createInput(command.element, board));
+          const current = getBoard();
+          if (current) setBoard(putElement(current, created));
+          const remapped = remapElement(historyRef.current, command.element.id, created);
+          commit(afterRedo(remapped, { ...command, element: created }));
+          setNotice({ tone: 'info', text: `Rétabli : ${command.label.toLowerCase()}.` });
+        } catch (error) {
+          setNotice(failureNotice(error));
+        }
+        return;
+      }
+
       const done =
         command.kind === 'move'
           ? await applyMove(command.elementId, command.after)
@@ -379,6 +449,7 @@ export function useRailActions(boardId: string) {
   return {
     move,
     changeRow,
+    add,
     remove,
     undo,
     redo,

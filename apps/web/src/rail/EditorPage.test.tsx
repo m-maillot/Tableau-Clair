@@ -113,6 +113,7 @@ function mockServer(board: ReturnType<typeof makeBoard> | null = makeBoard()) {
       if (url === '/api/me')
         return json({ id: ID(1), email: 'martial@racomach.fr', displayName: 'Martial' });
       if (url === '/api/properties') return json([]);
+      if (url === '/api/custom-models') return json([]);
       if (url === `/api/boards/${BOARD_ID}`) {
         return board ? json(board) : json({ code: 'not_found', message: 'x' }, 404);
       }
@@ -272,7 +273,7 @@ describe('éditeur de rail — sélection', () => {
     expect(screen.queryByRole('region', { name: /Parafoudre|Prises/ })).not.toBeInTheDocument();
   });
 
-  it('un module libre sélectionné affiche l’espace disponible', async () => {
+  it('un module libre ouvre l’ajout avec l’espace disponible', async () => {
     mockServer();
     renderEditor();
     const slot = await screen.findByRole('button', {
@@ -281,19 +282,20 @@ describe('éditeur de rail — sélection', () => {
     await userEvent.click(slot);
 
     expect(slot).toHaveAttribute('aria-pressed', 'true');
-    const sheet = screen.getByRole('region', { name: 'Module libre' });
-    expect(sheet).toHaveAccessibleDescription('Rangée 1 · module 8 · 5 modules disponibles');
+    const dialog = await screen.findByRole('dialog', { name: 'Ajouter un appareil' });
+    expect(dialog).toHaveAccessibleDescription('Rangée 1 · module 8 · 5 modules disponibles');
   });
 
-  it('passer d’un module libre à un élément remplace la feuille', async () => {
+  it('passer d’un module libre à un élément ferme l’ajout', async () => {
     mockServer();
     renderEditor();
     await userEvent.click(
       await screen.findByRole('button', { name: 'Rangée 1, module libre 8, ajouter un appareil' }),
     );
+    await userEvent.keyboard('{Escape}');
     await userEvent.click(screen.getByRole('button', { name: /Prises cuisine/ }));
 
-    expect(screen.queryByRole('region', { name: 'Module libre' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Ajouter un appareil' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Prises cuisine' })).toBeInTheDocument();
   });
 });

@@ -344,6 +344,29 @@ export const fixtures = pgTable(
   (t) => [index('fixtures_room_idx').on(t.roomId)],
 );
 
+// --- Modèles d'éléments personnalisés (propres au compte) ---------------------------------------------
+
+/** Appareil « Autre » enregistré pour être réutilisé dans tous les tableaux du compte (spec §7.3). */
+export const customModels = pgTable(
+  'custom_models',
+  {
+    ...audit(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    role: text('role'),
+    brand: text('brand'),
+    model: text('model'),
+    /** Nombre de modules DIN occupés. */
+    width: integer('width').notNull(),
+  },
+  (t) => [
+    index('custom_models_user_idx').on(t.userId),
+    check('custom_models_width_positive', sql`${t.width} >= 1`),
+  ],
+);
+
 // --- Circuits : lien équipement ↔ disjoncteur -------------------------------------------------------
 
 /**

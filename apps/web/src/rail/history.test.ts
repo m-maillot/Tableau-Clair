@@ -62,13 +62,15 @@ describe('historique', () => {
     const restored = { id: 'new', label: 'Four' } as Element;
     let h = record(EMPTY_HISTORY, move('old', 0, 2));
     h = record(h, { kind: 'remove', element: removed, label: 'Supprimé' });
+    h = record(h, { kind: 'add', element: removed, label: 'Ajout' });
     h = record(h, move('other', 5, 6));
     h = { ...h, future: [move('old', 2, 3)] };
 
     const remapped = remapElement(h, 'old', restored);
     expect((remapped.past[0] as { elementId: string }).elementId).toBe('new');
     expect((remapped.past[1] as { element: Element }).element.id).toBe('new');
-    expect((remapped.past[2] as { elementId: string }).elementId).toBe('other');
+    expect((remapped.past[2] as { element: Element }).element.id).toBe('new');
+    expect((remapped.past[3] as { elementId: string }).elementId).toBe('other');
     expect((remapped.future[0] as { elementId: string }).elementId).toBe('new');
   });
 });

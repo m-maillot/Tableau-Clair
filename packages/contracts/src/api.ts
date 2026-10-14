@@ -303,3 +303,26 @@ export const searchResultSchema = z.object({
   status: verificationSchema.nullable(),
 });
 export type SearchResult = z.infer<typeof searchResultSchema>;
+
+// --- Modèles personnalisés ----------------------------------------------------------------------------------
+
+export const customModelSchema = z.object({
+  ...auditFields,
+  label: z.string(),
+  role: z.string().nullable(),
+  brand: z.string().nullable(),
+  model: z.string().nullable(),
+  width: z.number().int().min(1),
+});
+export type CustomModel = z.infer<typeof customModelSchema>;
+
+export const createCustomModelSchema = z
+  .object({
+    label: name,
+    role: optionalText,
+    brand: optionalText,
+    model: optionalText,
+    width: z.number().int().min(1).max(LIMITS.maxModulesPerRow),
+  })
+  .strict();
+export type CreateCustomModelInput = z.infer<typeof createCustomModelSchema>;

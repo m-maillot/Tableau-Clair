@@ -29,6 +29,20 @@
       "when": 1791982573273,
       "tag": "0003_search",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791988193786,
+      "tag": "0004_custom_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791988194286,
+      "tag": "0005_custom_models_touch",
+      "breakpoints": true
     }
   ]
 }

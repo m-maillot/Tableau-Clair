@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import {
+  createCustomModel,
   createProperty,
+  deleteCustomModel,
+  fetchCustomModels,
   fetchBoard,
   fetchBoardImpact,
   fetchBoards,
@@ -11,6 +14,7 @@ import {
 } from '../api/client';
 
 export const keys = {
+  customModels: ['custom-models'] as const,
   properties: ['properties'] as const,
   boards: (propertyId: string) => ['properties', propertyId, 'boards'] as const,
   overview: (propertyId: string) => ['properties', propertyId, 'overview'] as const,
@@ -106,4 +110,23 @@ export function useSelectedProperty<T extends { id: string }>(properties: T[] | 
     }
   };
   return [selected, select] as const;
+}
+
+export const useCustomModels = () =>
+  useQuery({ queryKey: keys.customModels, queryFn: fetchCustomModels });
+
+export function useSaveCustomModel() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: createCustomModel,
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.customModels }),
+  });
+}
+
+export function useRemoveCustomModel() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCustomModel,
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.customModels }),
+  });
 }

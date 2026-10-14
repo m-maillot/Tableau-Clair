@@ -1,4 +1,5 @@
 import {
+  customModelSchema,
   elementSchema,
   boardImpactSchema,
   boardSchema,
@@ -12,7 +13,9 @@ import {
   type BoardImpact,
   type BoardSummary,
   type CreateBoardInput,
+  type CreateCustomModelInput,
   type CreateElementInput,
+  type CustomModel,
   type Element,
   type UpdateElementInput,
   type CreatePropertyInput,
@@ -205,5 +208,24 @@ export async function patchElement(elementId: string, input: UpdateElementInput)
 
 export async function deleteElement(elementId: string): Promise<void> {
   const response = await request(`/api/elements/${elementId}`, { method: 'DELETE' });
+  if (!response.ok) throw await failure(response);
+}
+
+// --- Modèles d'appareils personnalisés ---------------------------------------------------------------------
+
+export const fetchCustomModels = (): Promise<CustomModel[]> =>
+  getJson('/api/custom-models', z.array(customModelSchema));
+
+export async function createCustomModel(input: CreateCustomModelInput): Promise<CustomModel> {
+  const response = await request('/api/custom-models', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw await failure(response);
+  return customModelSchema.parse(await response.json());
+}
+
+export async function deleteCustomModel(modelId: string): Promise<void> {
+  const response = await request(`/api/custom-models/${modelId}`, { method: 'DELETE' });
   if (!response.ok) throw await failure(response);
 }
