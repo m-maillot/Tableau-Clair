@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   allowedWidthsAt,
+  analyzeBoardResize,
   fitsInRow,
   freeSlots,
   maxWidthAt,
@@ -293,5 +294,76 @@ describe('invariants (aléatoire)', () => {
         expect(rowOccupancy(r).free).toBeGreaterThanOrEqual(0);
       }
     }
+  });
+});
+
+describe('analyzeBoardResize', () => {
+  const rails = [
+    {
+      index: 0,
+      elements: [
+        { id: 'a', position: 0, width: 2, label: 'Diff' },
+        { id: 'b', position: 16, width: 2, label: 'Parafoudre' },
+      ],
+    },
+    { index: 1, elements: [{ id: 'c', position: 0, width: 4 }] },
+    { index: 2, elements: [] },
+  ];
+
+  it('ne signale rien quand la géométrie visée contient tout', () => {
+    expect(analyzeBoardResize(rails, { rowCount: 3, modulesPerRow: 24 })).toEqual({
+      rows: null,
+      modules: null,
+      overflowingElementIds: [],
+    });
+  });
+
+  it('cite la rangée, le minimum et l’élément qui va jusqu’au bout', () => {
+    const result = analyzeBoardResize(rails, { rowCount: 3, modulesPerRow: 16 });
+    expect(result.modules).toEqual({
+      minimum: 18,
+      rowIndex: 0,
+      element: { id: 'b', label: 'Parafoudre', start: 17, end: 18 },
+    });
+    expect(result.overflowingElementIds).toEqual(['b']);
+  });
+
+  it('accepte exactement le minimum', () => {
+    expect(analyzeBoardResize(rails, { rowCount: 3, modulesPerRow: 18 }).modules).toBeNull();
+  });
+
+  it('refuse de retirer une rangée non vide, et laisse retirer une rangée vide', () => {
+    expect(analyzeBoardResize(rails, { rowCount: 2, modulesPerRow: 24 }).rows).toBeNull();
+    expect(analyzeBoardResize(rails, { rowCount: 1, modulesPerRow: 24 }).rows).toEqual({
+      minimum: 2,
+      rowIndex: 1,
+      elementCount: 1,
+    });
+  });
+
+  it('ignore les rangées retirées vides pour le minimum de modules', () => {
+    const tall = [
+      { index: 0, elements: [{ id: 'a', position: 0, width: 4 }] },
+      { index: 1, elements: [] },
+    ];
+    expect(analyzeBoardResize(tall, { rowCount: 1, modulesPerRow: 4 }).modules).toBeNull();
+  });
+
+  it('gère un tableau sans élément', () => {
+    expect(
+      analyzeBoardResize([{ index: 0, elements: [] }], { rowCount: 1, modulesPerRow: 1 }),
+    ).toEqual({
+      rows: null,
+      modules: null,
+      overflowingElementIds: [],
+    });
+  });
+
+  it('omet le libellé quand l’élément n’en a pas', () => {
+    const result = analyzeBoardResize(
+      [{ index: 0, elements: [{ id: 'x', position: 3, width: 1 }] }],
+      { rowCount: 1, modulesPerRow: 2 },
+    );
+    expect(result.modules?.element).toEqual({ id: 'x', start: 4, end: 4 });
   });
 });

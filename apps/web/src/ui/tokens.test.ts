@@ -45,6 +45,10 @@ const TEXT_PAIRS: [string, string, string][] = [
   ['status-verified-fg', 'status-verified-bg', 'statut vérifiée'],
   ['status-assumed-fg', 'status-assumed-bg', 'statut supposée'],
   ['status-unknown-fg', 'status-unknown-bg', 'statut inconnue'],
+  ['white', 'danger', 'bouton de suppression'],
+  ['danger-fg', 'danger-bg', 'bouton de suppression atténué'],
+  ['danger-text', 'danger-bg', 'message de refus'],
+  ['danger-fg', 'white', 'titre de zone de suppression'],
 ];
 
 describe('tokens.css', () => {

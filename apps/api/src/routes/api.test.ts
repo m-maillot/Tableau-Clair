@@ -1,4 +1,5 @@
 import {
+  boardImpactSchema,
   boardSchema,
   boardSummarySchema,
   elementSchema,
@@ -360,6 +361,132 @@ describe('tableaux', () => {
 
     const original = (await call(owner, 'GET', `/api/boards/${board.id}`)).body as Board;
     expect(original.rows[0]!.elements).toHaveLength(2);
+  });
+
+  it('nomme la copie comme demandé et refuse un nom vide', async () => {
+    const { owner, board } = await scenario();
+    const named = await call(owner, 'POST', `/api/boards/${board.id}/duplicate`, {
+      name: 'Garage — sauvegarde',
+    });
+    expect(named.status).toBe(201);
+    expect(named.body.name).toBe('Garage — sauvegarde');
+
+    const blank = await call(owner, 'POST', `/api/boards/${board.id}/duplicate`, { name: '  ' });
+    expect(blank.status).toBe(400);
+  });
+
+  it('ne copie pas les liaisons avec les équipements du plan', async () => {
+    const { owner, property, board, rows } = await scenario();
+    const breakerEl = (await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(0)))
+      .body;
+    const [floor] = await db
+      .insert(schema.floors)
+      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .returning();
+    const [room] = await db
+      .insert(schema.rooms)
+      .values({ floorId: floor!.id, name: 'Cuisine', x: 0, y: 0, w: 10, h: 10 })
+      .returning();
+    const [fixture] = await db
+      .insert(schema.fixtures)
+      .values({ roomId: room!.id, kind: 'socket', label: 'Prise', x: 1, y: 1 })
+      .returning();
+    await db
+      .insert(schema.circuits)
+      .values({ fixtureId: fixture!.id, breakerId: breakerEl.id, status: 'verified' });
+
+    const copy = await call(owner, 'POST', `/api/boards/${board.id}/duplicate`);
+    expect(copy.status).toBe(201);
+
+    const links = await db
+      .select()
+      .from(schema.circuits)
+      .where(eq(schema.circuits.fixtureId, fixture!.id));
+    expect(links).toHaveLength(1);
+    expect(links[0]!.breakerId).toBe(breakerEl.id); // toujours relié à l'original, pas à la copie
+  });
+
+  it('décrit l’impact d’une suppression', async () => {
+    const { owner, property, board, rows } = await scenario();
+    const a = (await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(0))).body;
+    await call(owner, 'POST', `/api/rows/${rows[1]!.id}/elements`, breaker(0));
+
+    const other: Board = (
+      await call(owner, 'POST', `/api/properties/${property.id}/boards`, {
+        name: 'Autre',
+        rowCount: 1,
+        modulesPerRow: 12,
+      })
+    ).body;
+    const otherBreaker = (
+      await call(owner, 'POST', `/api/rows/${other.rows[0]!.id}/elements`, breaker(0))
+    ).body;
+
+    const [floor] = await db
+      .insert(schema.floors)
+      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .returning();
+    const [room] = await db
+      .insert(schema.rooms)
+      .values({ floorId: floor!.id, name: 'Cuisine', x: 0, y: 0, w: 10, h: 10 })
+      .returning();
+    const made = await db
+      .insert(schema.fixtures)
+      .values(
+        [1, 2, 3].map((n) => ({
+          roomId: room!.id,
+          kind: 'socket' as const,
+          label: `P${n}`,
+          x: n,
+          y: n,
+        })),
+      )
+      .returning();
+    await db.insert(schema.circuits).values([
+      { fixtureId: made[0]!.id, breakerId: a.id, status: 'verified' as const },
+      { fixtureId: made[1]!.id, breakerId: otherBreaker.id, status: 'assumed' as const },
+    ]);
+
+    const impact = await call(owner, 'GET', `/api/boards/${board.id}/impact`);
+    expect(impact.status).toBe(200);
+    expect(boardImpactSchema.parse(impact.body)).toEqual({
+      rowCount: 2,
+      elementCount: 2,
+      hasPhoto: false,
+      fixtureCount: 3,
+      fixturesToUnlink: 1,
+    });
+  });
+
+  it('passe les liaisons à « inconnue » quand on supprime le tableau, sans supprimer les équipements', async () => {
+    const { owner, property, board, rows } = await scenario();
+    const a = (await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(0))).body;
+    const [floor] = await db
+      .insert(schema.floors)
+      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .returning();
+    const [room] = await db
+      .insert(schema.rooms)
+      .values({ floorId: floor!.id, name: 'Cuisine', x: 0, y: 0, w: 10, h: 10 })
+      .returning();
+    const [fixture] = await db
+      .insert(schema.fixtures)
+      .values({ roomId: room!.id, kind: 'socket', label: 'Prise', x: 1, y: 1 })
+      .returning();
+    await db
+      .insert(schema.circuits)
+      .values({ fixtureId: fixture!.id, breakerId: a.id, status: 'verified' });
+
+    expect((await call(owner, 'DELETE', `/api/boards/${board.id}`)).status).toBe(204);
+
+    const [circuit] = await db
+      .select()
+      .from(schema.circuits)
+      .where(eq(schema.circuits.fixtureId, fixture!.id));
+    expect(circuit).toMatchObject({ breakerId: null, status: 'unknown' });
+    expect(
+      await db.select().from(schema.fixtures).where(eq(schema.fixtures.id, fixture!.id)),
+    ).toHaveLength(1);
   });
 
   it('supprime un tableau', async () => {

@@ -211,6 +211,22 @@ export const updateBoardSchema = z
   .strict();
 export type UpdateBoardInput = z.infer<typeof updateBoardSchema>;
 
+/** Duplication : le nom de la copie est facultatif (par défaut « <nom> (copie) »). */
+export const duplicateBoardSchema = z.object({ name: name.optional() }).strict();
+export type DuplicateBoardInput = z.infer<typeof duplicateBoardSchema>;
+
+/** Ce que la suppression d'un tableau supprime et conserve (écran de confirmation). */
+export const boardImpactSchema = z.object({
+  rowCount: z.number().int(),
+  elementCount: z.number().int(),
+  hasPhoto: z.boolean(),
+  /** Équipements du plan du logement, tous tableaux confondus : ils sont conservés. */
+  fixtureCount: z.number().int(),
+  /** Parmi eux, ceux dont le disjoncteur est dans ce tableau : leur liaison passe à « inconnue ». */
+  fixturesToUnlink: z.number().int(),
+});
+export type BoardImpact = z.infer<typeof boardImpactSchema>;
+
 // --- Photos et images de plan -----------------------------------------------------------------------------
 
 export const PHOTO_LIMITS = {

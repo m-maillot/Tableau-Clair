@@ -219,3 +219,93 @@ export function setRowCapacity<T extends Placed>(
   if (capacity < minRowCapacity(row)) return err({ code: 'out_of_bounds', capacity });
   return ok({ ...row, capacity });
 }
+
+// --- Redimensionnement d'un tableau ------------------------------------------------------------------
+
+export interface ResizeRail {
+  /** Rang de la rangée dans le tableau (0 = en haut). */
+  index: number;
+  elements: readonly (Placed & { label?: string })[];
+}
+
+export interface RowsProblem {
+  /** Nombre de rangées en dessous duquel on ne peut pas descendre. */
+  minimum: number;
+  /** Rangée non vide qui l'impose (0-indexée) et son nombre d'éléments. */
+  rowIndex: number;
+  elementCount: number;
+}
+
+export interface ModulesProblem {
+  /** Nombre de modules par rangée en dessous duquel on ne peut pas descendre. */
+  minimum: number;
+  /** Rangée la plus occupée (0-indexée) et l'élément qui va jusqu'au bout. */
+  rowIndex: number;
+  element: { id: string; label?: string; start: number; end: number } | undefined;
+}
+
+export interface ResizeAnalysis {
+  rows: RowsProblem | null;
+  modules: ModulesProblem | null;
+  /** Éléments qui sortiraient du rail avec le nombre de modules visé. */
+  overflowingElementIds: string[];
+}
+
+/**
+ * Que se passe-t-il si le tableau passe à `rowCount` rangées de `modulesPerRow` modules ?
+ * Une rangée ne se retire que vide, et une rangée ne se raccourcit pas sous son dernier élément.
+ */
+export function analyzeBoardResize(
+  rails: readonly ResizeRail[],
+  target: { rowCount: number; modulesPerRow: number },
+): ResizeAnalysis {
+  const nonEmpty = rails.filter((r) => r.elements.length > 0);
+
+  // Rangées : on ne peut retirer que des rangées vides, en partant du bas.
+  const lowest = nonEmpty.reduce<ResizeRail | undefined>(
+    (found, rail) => (!found || rail.index > found.index ? rail : found),
+    undefined,
+  );
+  const minRows = Math.max(1, lowest ? lowest.index + 1 : 1);
+  const rowsProblem: RowsProblem | null =
+    lowest && target.rowCount < minRows
+      ? { minimum: minRows, rowIndex: lowest.index, elementCount: lowest.elements.length }
+      : null;
+
+  // Modules : la plus longue des rangées conservées fixe le minimum.
+  const kept = rails.filter((r) => r.index < Math.max(target.rowCount, minRows));
+  let minimum = 1;
+  let widest: { rail: ResizeRail; end: number } | undefined;
+  for (const rail of kept) {
+    const end = Math.max(0, ...rail.elements.map((e) => e.position + e.width));
+    if (end > minimum) {
+      minimum = end;
+      widest = { rail, end };
+    }
+  }
+
+  const modulesProblem: ModulesProblem | null =
+    widest && target.modulesPerRow < minimum
+      ? (() => {
+          const last = widest.rail.elements.find((e) => e.position + e.width === widest.end);
+          return {
+            minimum,
+            rowIndex: widest.rail.index,
+            element: last
+              ? {
+                  id: last.id,
+                  ...(last.label !== undefined ? { label: last.label } : {}),
+                  start: last.position + 1,
+                  end: last.position + last.width,
+                }
+              : undefined,
+          };
+        })()
+      : null;
+
+  const overflowingElementIds = kept.flatMap((rail) =>
+    rail.elements.filter((e) => e.position + e.width > target.modulesPerRow).map((e) => e.id),
+  );
+
+  return { rows: rowsProblem, modules: modulesProblem, overflowingElementIds };
+}

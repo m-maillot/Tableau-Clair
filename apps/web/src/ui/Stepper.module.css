@@ -33,3 +33,8 @@
   font-weight: 800;
   text-align: center;
 }
+
+.invalid {
+  border: 2px solid var(--color-danger);
+  background: var(--color-danger-surface);
+}

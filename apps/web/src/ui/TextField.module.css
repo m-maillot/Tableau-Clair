@@ -50,3 +50,12 @@
   font-weight: 600;
   color: var(--color-status-assumed-fg);
 }
+
+.multiline {
+  align-items: flex-start;
+  padding: 12px 16px;
+}
+.multiline .input {
+  resize: vertical;
+  line-height: 1.4;
+}

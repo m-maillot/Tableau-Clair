@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tableau}
       POSTGRES_DB: ${POSTGRES_DB:-tableau_clair}
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '${POSTGRES_PORT:-6010}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -26,8 +26,8 @@ services:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
     ports:
-      - '${S3_PORT:-9010}:9000'
-      - '${S3_CONSOLE_PORT:-9011}:9001'
+      - '${S3_PORT:-6020}:9000'
+      - '${S3_CONSOLE_PORT:-6021}:9001'
     volumes:
       - minio-data:/data
     healthcheck:
@@ -54,12 +54,12 @@ services:
       S3_BUCKET: ${S3_BUCKET:-tableau-clair}
     restart: 'no'
 
-  # Capture les e-mails sortants (liens magiques) : interface sur http://localhost:8025
+  # Capture les e-mails sortants (liens magiques) : interface sur http://localhost:6031
   mailpit:
     image: axllent/mailpit:latest
     ports:
-      - '${SMTP_PORT:-1025}:1025'
-      - '${MAILPIT_UI_PORT:-8025}:8025'
+      - '${SMTP_PORT:-6030}:1025'
+      - '${MAILPIT_UI_PORT:-6031}:8025'
 
 volumes:
   postgres-data:

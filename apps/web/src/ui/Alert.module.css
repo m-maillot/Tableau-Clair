@@ -1,0 +1,29 @@
+.alert {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid transparent;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.alert svg {
+  flex: none;
+  margin-top: 1px;
+}
+.danger {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+.danger svg {
+  color: var(--color-danger-fg);
+}
+.warning {
+  border-color: var(--color-status-assumed-border);
+  background: var(--color-status-assumed-bg);
+  color: var(--color-status-assumed-fg);
+}
+.text {
+  min-width: 0;
+}

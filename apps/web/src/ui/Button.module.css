@@ -67,6 +67,16 @@
   color: var(--color-blue);
 }
 
+.danger {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+
+.danger-soft {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-fg);
+}
+
 /* Bouton icône : cible tactile de 44 px */
 .iconButton {
   display: inline-flex;

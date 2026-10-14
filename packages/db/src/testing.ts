@@ -7,7 +7,7 @@ import { createDb, runMigrations, type Database } from './client';
  * Chaque appel de `createTestDatabase` crée une base jetable, migrée, puis supprimée.
  */
 const adminUrl =
-  process.env.TEST_DATABASE_URL ?? 'postgres://tableau:tableau@localhost:5432/postgres';
+  process.env.TEST_DATABASE_URL ?? 'postgres://tableau:tableau@localhost:6010/postgres';
 
 export interface TestDatabase {
   db: Database;

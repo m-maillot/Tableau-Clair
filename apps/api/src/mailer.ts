@@ -24,7 +24,7 @@ export function createSmtpMailer(config: SmtpConfig): Mailer {
   const transport = nodemailer.createTransport({
     host: config.host,
     port: config.port,
-    // 465 : TLS implicite ; 587 / 1025 : STARTTLS opportuniste.
+    // 465 : TLS implicite ; 587 (et le port de Mailpit en dev) : STARTTLS opportuniste.
     secure: config.port === 465,
     ...(config.user ? { auth: { user: config.user, pass: config.password ?? '' } } : {}),
   });

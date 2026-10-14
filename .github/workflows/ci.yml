@@ -15,13 +15,13 @@ jobs:
           POSTGRES_USER: tableau
           POSTGRES_PASSWORD: tableau
           POSTGRES_DB: postgres
-        ports: ['5432:5432']
+        ports: ['6010:5432']
         options: >-
           --health-cmd "pg_isready -U tableau"
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       # Les tests d'intégration créent leurs propres bases jetables.
-      TEST_DATABASE_URL: postgres://tableau:tableau@localhost:5432/postgres
+      TEST_DATABASE_URL: postgres://tableau:tableau@localhost:6010/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -32,11 +32,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: MinIO (stockage S3 des tests d'intégration)
         run: |
-          docker run -d --name minio -p 9010:9000 \
+          docker run -d --name minio -p 6020:9000 \
             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
             minio/minio server /data
           for i in $(seq 1 30); do
-            curl -sf http://localhost:9010/minio/health/ready && exit 0
+            curl -sf http://localhost:6020/minio/health/ready && exit 0
             sleep 1
           done
           echo "MinIO n'a pas démarré" && exit 1

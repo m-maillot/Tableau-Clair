@@ -1,13 +1,25 @@
-import { createBoardSchema, LIMITS, updateBoardSchema, type Board } from '@tableau-clair/contracts';
+import {
+  createBoardSchema,
+  duplicateBoardSchema,
+  LIMITS,
+  updateBoardSchema,
+  type Board,
+  type BoardImpact,
+} from '@tableau-clair/contracts';
 import {
   and,
   asc,
   boardRows,
   boards,
+  circuits,
   elements,
   eq,
+  fixtures,
+  floors,
   inArray,
+  rooms,
   schema,
+  sql,
   type Database,
   type DbExecutor,
 } from '@tableau-clair/db';
@@ -228,17 +240,20 @@ export function registerBoardRoutes(app: FastifyInstance, db: Database) {
 
   // --- Duplication ---------------------------------------------------------------------------------------
   app.post('/api/boards/:id/duplicate', async (request, reply) => {
+    const input = parseBody(duplicateBoardSchema, request.body);
     const { board, role } = await boardAccess(db, request.userId, idOf(request));
     requireRole(role, 'editor');
 
     const copy = await db.transaction(async (tx) => {
       const { rails, byRow } = await loadRails(tx, board.id);
       const suffix = ' (copie)';
+      const copyName =
+        input.name ?? board.name.slice(0, LIMITS.maxNameLength - suffix.length) + suffix;
       const [created] = await tx
         .insert(boards)
         .values({
           propertyId: board.propertyId,
-          name: board.name.slice(0, LIMITS.maxNameLength - suffix.length) + suffix,
+          name: copyName,
           location: board.location,
           // Photos non copiées : elles décrivent le tableau d'origine.
           photoId: null,
@@ -309,6 +324,41 @@ export function registerBoardRoutes(app: FastifyInstance, db: Database) {
       return loadBoard(tx, created!);
     });
     return reply.code(201).send(copy);
+  });
+
+  // --- Impact d'une suppression : ce qui disparaît, ce qui est conservé -------------------------------
+  app.get('/api/boards/:id/impact', async (request): Promise<BoardImpact> => {
+    const { board } = await boardAccess(db, request.userId, idOf(request));
+
+    const [rowStats] = await db
+      .select({ rows: sql<number>`count(*)::int` })
+      .from(boardRows)
+      .where(eq(boardRows.boardId, board.id));
+    const [elementStats] = await db
+      .select({ elements: sql<number>`count(*)::int` })
+      .from(elements)
+      .innerJoin(boardRows, eq(boardRows.id, elements.rowId))
+      .where(eq(boardRows.boardId, board.id));
+    const [fixtureStats] = await db
+      .select({ fixtures: sql<number>`count(*)::int` })
+      .from(fixtures)
+      .innerJoin(rooms, eq(rooms.id, fixtures.roomId))
+      .innerJoin(floors, eq(floors.id, rooms.floorId))
+      .where(eq(floors.propertyId, board.propertyId));
+    const [unlinkStats] = await db
+      .select({ linked: sql<number>`count(distinct ${circuits.fixtureId})::int` })
+      .from(circuits)
+      .innerJoin(elements, eq(elements.id, circuits.breakerId))
+      .innerJoin(boardRows, eq(boardRows.id, elements.rowId))
+      .where(eq(boardRows.boardId, board.id));
+
+    return {
+      rowCount: rowStats?.rows ?? 0,
+      elementCount: elementStats?.elements ?? 0,
+      hasPhoto: board.photoId !== null,
+      fixtureCount: fixtureStats?.fixtures ?? 0,
+      fixturesToUnlink: unlinkStats?.linked ?? 0,
+    };
   });
 
   // --- Suppression ------------------------------------------------------------------------------------------

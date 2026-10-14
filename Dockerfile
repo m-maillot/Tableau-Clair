@@ -22,7 +22,7 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 
 FROM node:24-alpine AS runtime
 ENV NODE_ENV=production \
-    PORT=3000 \
+    PORT=6001 \
     WEB_DIST=/app/web \
     MIGRATIONS_DIR=/app/migrations
 WORKDIR /app
@@ -32,7 +32,7 @@ COPY --from=build /repo/apps/api/dist ./apps/api/dist
 COPY --from=build /repo/apps/web/dist ./web
 COPY --from=build /repo/packages/db/drizzle ./migrations
 USER node
-EXPOSE 3000
+EXPOSE 6001
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 WORKDIR /app/apps/api

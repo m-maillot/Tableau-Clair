@@ -1,3 +1,4 @@
+export { Alert, type AlertProps } from './Alert';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export {
   Button,
@@ -12,3 +13,4 @@ export { Stepper, type StepperProps } from './Stepper';
 export { TabBar, type TabBarProps, type TabItem, type TabLinkProps } from './TabBar';
 export { TextField, type TextFieldProps } from './TextField';
 export { TypeChip, type TypeChipProps } from './TypeChip';
+export { TextArea, type TextAreaProps } from './TextArea';

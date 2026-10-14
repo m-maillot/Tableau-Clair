@@ -2,5 +2,5 @@
 # DOMAIN vient de l'environnement (voir .env.example).
 {$DOMAIN} {
 	encode zstd gzip
-	reverse_proxy app:3000
+	reverse_proxy app:6001
 }

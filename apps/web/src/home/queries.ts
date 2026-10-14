@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import {
   createProperty,
+  fetchBoard,
+  fetchBoardImpact,
   fetchBoards,
   fetchOverview,
   fetchProperties,
@@ -12,6 +14,8 @@ export const keys = {
   properties: ['properties'] as const,
   boards: (propertyId: string) => ['properties', propertyId, 'boards'] as const,
   overview: (propertyId: string) => ['properties', propertyId, 'overview'] as const,
+  board: (boardId: string) => ['boards', boardId] as const,
+  boardImpact: (boardId: string) => ['boards', boardId, 'impact'] as const,
   search: (propertyId: string, query: string) =>
     ['properties', propertyId, 'search', query] as const,
 };
@@ -31,6 +35,22 @@ export const useOverview = (propertyId: string | undefined) =>
     queryKey: keys.overview(propertyId ?? ''),
     queryFn: () => fetchOverview(propertyId!),
     enabled: !!propertyId,
+  });
+
+export const useBoard = (boardId: string | undefined) =>
+  useQuery({
+    queryKey: keys.board(boardId ?? ''),
+    queryFn: () => fetchBoard(boardId!),
+    enabled: !!boardId,
+  });
+
+export const useBoardImpact = (boardId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: keys.boardImpact(boardId ?? ''),
+    queryFn: () => fetchBoardImpact(boardId!),
+    enabled: !!boardId && enabled,
+    // L'impact doit refléter l'état présent à l'ouverture de la confirmation.
+    staleTime: 0,
   });
 
 export const MIN_SEARCH_LENGTH = 2;

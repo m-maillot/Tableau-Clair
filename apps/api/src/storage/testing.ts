@@ -25,7 +25,7 @@ export interface TestBucket {
 
 export async function createTestBucket(): Promise<TestBucket> {
   const config: S3Config = {
-    endpoint: process.env.TEST_S3_ENDPOINT ?? 'http://localhost:9010',
+    endpoint: process.env.TEST_S3_ENDPOINT ?? 'http://localhost:6020',
     region: 'us-east-1',
     bucket: `tc-test-${randomUUID()}`,
     accessKey: process.env.TEST_S3_ACCESS_KEY ?? 'minioadmin',

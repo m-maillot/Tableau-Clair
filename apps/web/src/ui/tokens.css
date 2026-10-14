@@ -30,6 +30,13 @@
   --color-status-unknown-bg: #e3e7f0;
   --color-status-unknown-fg: #0d1b3d;
 
+  /* Danger : suppression, réduction refusée */
+  --color-danger: #b42318;
+  --color-danger-bg: #fde8e6;
+  --color-danger-surface: #fff5f4;
+  --color-danger-fg: #8a1c12;
+  --color-danger-text: #5a130c;
+
   /* Rayons */
   --radius-card: 24px;
   --radius-card-lg: 28px;

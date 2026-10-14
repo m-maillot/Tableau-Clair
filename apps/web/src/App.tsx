@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router';
 import { SessionProvider, useSession } from './auth/session';
+import { BoardPage, BoardSettingsPage, BoardsPage, NewBoardPage } from './board-settings/pages';
 import { HomePage } from './home/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { AppShell } from './shell/AppShell';
@@ -39,11 +40,13 @@ export function AppRoutes() {
     <Routes>
       <Route path="/connexion" element={<LoginPage />} />
       <Route element={<RequireSession />}>
+        {/* Écrans plein cadre : sans barre d'onglets, avec leur propre barre d'actions. */}
+        <Route path="/tableaux/nouveau" element={<NewBoardPage />} />
+        <Route path="/tableaux/:boardId/parametres" element={<BoardSettingsPage />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/tableaux" element={<ComingSoonPage title="Tableaux" />} />
-          <Route path="/tableaux/nouveau" element={<ComingSoonPage title="Nouveau tableau" />} />
-          <Route path="/tableaux/:boardId" element={<ComingSoonPage title="Tableau" />} />
+          <Route path="/tableaux" element={<BoardsPage />} />
+          <Route path="/tableaux/:boardId" element={<BoardPage />} />
           <Route path="/plan" element={<ComingSoonPage title="Plan du logement" />} />
           <Route path="/verifier" element={<ComingSoonPage title="À vérifier" />} />
         </Route>

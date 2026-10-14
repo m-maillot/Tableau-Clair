@@ -10,13 +10,31 @@ export interface StepperProps {
   max?: number;
   /** Texte de l'unité lu avec la valeur (« modules »). */
   unit?: string;
+  /** Valeur refusée : le contrôle passe en erreur ; `describedBy` pointe le message. */
+  invalid?: boolean;
+  describedBy?: string;
 }
 
-export function Stepper({ label, value, onChange, min = 1, max, unit }: StepperProps) {
+export function Stepper({
+  label,
+  value,
+  onChange,
+  min = 1,
+  max,
+  unit,
+  invalid = false,
+  describedBy,
+}: StepperProps) {
   const atMin = value <= min;
   const atMax = max !== undefined && value >= max;
   return (
-    <div role="group" aria-label={label} className={styles.stepper}>
+    <div
+      role="group"
+      aria-label={label}
+      aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
+      className={`${styles.stepper} ${invalid ? styles.invalid : ''}`}
+    >
       <button
         type="button"
         className={styles.button}

@@ -1,0 +1,36 @@
+.card {
+  padding: 20px;
+  border-radius: 28px;
+  background: var(--color-white);
+}
+.title {
+  font-size: 16px;
+  font-weight: 800;
+}
+.text {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.grow {
+  flex: 1 1 160px;
+}
+.inlineButton {
+  background: var(--color-ink);
+  color: var(--color-white);
+  min-height: 54px;
+}
+.danger {
+  border: 2px solid var(--color-danger-bg);
+}
+.dangerTitle {
+  color: var(--color-danger-fg);
+}

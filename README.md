@@ -15,7 +15,7 @@ Cartographie de tableaux électriques DIN : composition réelle sur rail, circui
 ```bash
 docker compose up -d   # postgres, minio (bucket créé), mailpit
 pnpm install
-pnpm dev               # API sur :3000, web sur :5173 (proxy /api → API)
+pnpm dev               # API sur :6001, web sur :6002 (proxy /api → API)
 ```
 
 Aucune configuration n'est nécessaire en local : l'API lit `.env.example` (valeurs adaptées au
@@ -27,11 +27,24 @@ Services de développement :
 
 | Service  | URL / port                                      |
 | -------- | ----------------------------------------------- |
-| Postgres | `localhost:5432` (`tableau` / `tableau`)        |
-| MinIO    | S3 `localhost:9010`, console `:9011`            |
-| Mailpit  | interface `http://localhost:8025`, SMTP `:1025` |
+| Postgres | `localhost:6010` (`tableau` / `tableau`)        |
+| MinIO    | S3 `localhost:6020`, console `:6021`            |
+| Mailpit  | interface `http://localhost:6031`, SMTP `:6030` |
 
-Les ports se changent dans `.env` (`POSTGRES_PORT`, `S3_PORT`, `S3_CONSOLE_PORT`, `MAILPIT_UI_PORT`, `SMTP_PORT`).
+Tous les ports de développement sont dans la plage **6000–6100**, pour ne pas entrer en conflit avec
+d'autres projets. Évitez 6000 (bloqué par Chrome, Edge et Brave : `ERR_UNSAFE_PORT`), 6566 et 6665–6669 :
+
+| Port        | Service                                                 |
+| ----------- | ------------------------------------------------------- |
+| 6002        | Web (Vite ; échoue plutôt que de prendre un autre port) |
+| 6001        | API                                                     |
+| 6010        | PostgreSQL                                              |
+| 6020 / 6021 | MinIO (S3 / console)                                    |
+| 6030 / 6031 | Mailpit (SMTP / interface)                              |
+
+Ils se changent dans `.env` (`POSTGRES_PORT`, `S3_PORT`, `S3_CONSOLE_PORT`, `SMTP_PORT`,
+`MAILPIT_UI_PORT`). Les tests d'intégration utilisent les mêmes ports (`TEST_DATABASE_URL`,
+`TEST_S3_ENDPOINT` pour les surcharger). En production, seuls 80 et 443 sont publiés par Caddy.
 
 ## Production
 
@@ -63,7 +76,7 @@ Sans mot de passe : lien magique par e-mail et Google (Apple en V1.1). Les inscr
 seules les adresses de `ALLOWED_EMAILS` obtiennent un compte ou une session, quel que soit le
 fournisseur ; une adresse refusée reçoit la même réponse qu'une adresse admise et le refus est journalisé.
 
-- **Dev** : le lien magique arrive dans Mailpit (`http://localhost:8025`), l'URL du lien pointe sur `APP_URL`.
+- **Dev** : le lien magique arrive dans Mailpit (`http://localhost:6031`), l'URL du lien pointe sur `APP_URL`.
 - **Google** : créer un client OAuth « Application Web » et déclarer l'URI de redirection
   `{APP_URL}/api/auth/callback/google`, puis renseigner `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
   Laissés vides, la connexion Google est simplement indisponible.
@@ -77,17 +90,24 @@ fournisseur ; une adresse refusée reçoit la même réponse qu'une adresse admi
 Toutes les routes `/api/*` (hors santé et authentification) exigent une session. Les corps et réponses
 sont décrits par les schémas Zod de `packages/contracts`.
 
-| Méthode                | Route                        | Rôle minimum      |
-| ---------------------- | ---------------------------- | ----------------- |
-| `GET` `POST`           | `/api/properties`            | membre / connecté |
-| `GET` `PATCH`          | `/api/properties/:id`        | membre / éditeur  |
-| `DELETE`               | `/api/properties/:id`        | propriétaire      |
-| `GET` `POST`           | `/api/properties/:id/boards` | membre / éditeur  |
-| `GET` `PATCH` `DELETE` | `/api/boards/:id`            | membre / éditeur  |
-| `POST`                 | `/api/boards/:id/duplicate`  | éditeur           |
-| `PATCH`                | `/api/rows/:id` (capacité)   | éditeur           |
-| `POST`                 | `/api/rows/:id/elements`     | éditeur           |
-| `GET` `PATCH` `DELETE` | `/api/elements/:id`          | membre / éditeur  |
+| Méthode                | Route                                                                      | Rôle minimum      |
+| ---------------------- | -------------------------------------------------------------------------- | ----------------- |
+| `GET` `POST`           | `/api/properties`                                                          | membre / connecté |
+| `GET` `PATCH`          | `/api/properties/:id`                                                      | membre / éditeur  |
+| `DELETE`               | `/api/properties/:id`                                                      | propriétaire      |
+| `GET`                  | `/api/properties/:id/overview` (fiabilité, dernière modification)          | membre            |
+| `GET`                  | `/api/properties/:id/search?q=` (tableaux, appareils, pièces, équipements) | membre            |
+| `GET` `POST`           | `/api/properties/:id/boards`                                               | membre / éditeur  |
+| `GET` `PATCH` `DELETE` | `/api/boards/:id`                                                          | membre / éditeur  |
+| `GET`                  | `/api/boards/:id/impact` (ce que la suppression retire et conserve)        | membre            |
+| `POST`                 | `/api/boards/:id/duplicate` (corps facultatif : `{ name }`)                | éditeur           |
+| `PATCH`                | `/api/rows/:id` (capacité)                                                 | éditeur           |
+| `POST`                 | `/api/rows/:id/elements`                                                   | éditeur           |
+| `GET` `PATCH` `DELETE` | `/api/elements/:id`                                                        | membre / éditeur  |
+| `POST`                 | `/api/properties/:id/photos?usage=…` (corps = image)                       | éditeur           |
+| `GET`                  | `/api/photos/:id` (métadonnées)                                            | membre            |
+| `GET`                  | `/api/photos/:id/content` (302 vers URL signée)                            | membre            |
+| `DELETE`               | `/api/photos/:id`                                                          | éditeur           |
 
 Conventions :
 
@@ -120,10 +140,15 @@ une URL signée valable 5 minutes, utilisable directement dans une balise `<img>
 
 ## Écrans et routes
 
-| Route        | Écran                            | Accès                                                |
-| ------------ | -------------------------------- | ---------------------------------------------------- |
-| `/connexion` | Connexion (lien magique, Google) | public ; redirige vers `/` si connecté               |
-| `/`          | Accueil (provisoire)             | session requise, sinon redirection vers `/connexion` |
+| Route                      | Écran                                                                    | Accès                                                |
+| -------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `/connexion`               | Connexion (lien magique, Google)                                         | public ; redirige vers `/` si connecté               |
+| `/`                        | Accueil : logement, fiabilité du repérage, tableaux, recherche           | session requise, sinon redirection vers `/connexion` |
+| `/tableaux`                | Liste des tableaux du logement actif                                     | session requise                                      |
+| `/tableaux/nouveau`        | Création d'un tableau (nom, emplacement, photo, rangées, modules, notes) | session requise                                      |
+| `/tableaux/:id`            | Tableau (l'éditeur de rail arrive avec un ticket suivant)                | session requise                                      |
+| `/tableaux/:id/parametres` | Paramètres : modification, duplication, suppression                      | session requise                                      |
+| `/plan`, `/verifier`       | Écrans à venir (page « arrive bientôt »)                                 | session requise                                      |
 
 Le front parle à l'API en same-origin (`/api/*`, proxy Vite en dev) via `apps/web/src/api/client.ts`.
 Après une tentative échouée, le serveur renvoie sur `/connexion?error=…` (`INVALID_TOKEN`,
@@ -135,7 +160,7 @@ Tokens en variables CSS dans `apps/web/src/ui/tokens.css`, composants de base da
 (`Button`, `IconButton`, `TextField`, `StatusChip`, `TypeChip`, `Stepper`, `TabBar`, `BottomSheet`),
 police Plus Jakarta Sans auto-hébergée (aucune requête vers Google Fonts).
 
-- **Catalogue** : `pnpm dev` puis `http://localhost:5173/catalogue.html` (page interne, absente du build).
+- **Catalogue** : `pnpm dev` puis `http://localhost:6002/catalogue.html` (page interne, absente du build).
 - **Accessibilité** : zones tactiles ≥ 44 px, focus visible, bouton-icône toujours nommé
   (`label` obligatoire), statut jamais porté par la couleur seule. Les paires texte / fond des tokens
   sont vérifiées AA par `tokens.test.ts`.

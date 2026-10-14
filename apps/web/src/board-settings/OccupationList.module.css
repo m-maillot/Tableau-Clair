@@ -1,0 +1,43 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.name {
+  width: 76px;
+}
+.bar {
+  flex: 1;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--color-white);
+}
+.fill,
+.fillOver {
+  display: block;
+  height: 100%;
+}
+.fill {
+  background: var(--color-blue);
+}
+.fillOver {
+  background: var(--color-danger);
+}
+.value {
+  width: 56px;
+  text-align: right;
+}
+.valueOver {
+  color: var(--color-danger-fg);
+}

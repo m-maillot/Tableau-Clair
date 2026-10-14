@@ -65,6 +65,27 @@ const PATHS = {
     <path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z" />
   ),
   undo: <path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3" />,
+  'alert-circle': (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5M12 16.5h.01" />
+    </>
+  ),
+  trash: <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />,
+  download: <path d="M12 4v12M7 11l5 5 5-5M5 20h14" />,
+  copy: (
+    <>
+      <rect x="8" y="8" width="12" height="12" rx="2.5" />
+      <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" />
+    </>
+  ),
+  camera: (
+    <>
+      <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </>
+  ),
+  'chevron-left': <path d="M15 5l-7 7 7 7" />,
   /** Éclair plein : disjoncteur. */
   bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" strokeWidth={1.5} />,
 } satisfies Record<string, ReactNode>;

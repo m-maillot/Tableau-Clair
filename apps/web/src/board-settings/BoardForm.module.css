@@ -1,0 +1,157 @@
+.page {
+  min-height: 100dvh;
+  padding: 32px 16px 120px;
+  background: var(--color-white);
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.titles {
+  flex: 1;
+  min-width: 0;
+}
+.title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.subtitle {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+.columns {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 1100px;
+  margin: 12px auto 0;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.composition {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--color-surface);
+}
+.legend {
+  padding: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.settingTitle {
+  font-size: 14px;
+  font-weight: 700;
+}
+.settingHint {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.previewBody {
+  margin-top: 12px;
+}
+.deleteButton {
+  margin-top: 12px;
+}
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Barre d'actions fixe en bas de l'écran. */
+.footer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px 20px;
+  border-top: 1px solid #e3e8f2;
+  background: var(--color-white);
+}
+
+.desktopOnly {
+  display: none;
+}
+
+/* Bureau : deux colonnes, fond doux, actions dans le flux. */
+@media (min-width: 960px) {
+  .page {
+    padding: 28px 32px 48px;
+    background: var(--color-bg-soft);
+  }
+  .title {
+    font-size: 28px;
+    letter-spacing: -0.6px;
+  }
+  .columns {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 18px;
+    margin-top: 18px;
+  }
+  .form {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 24px;
+    border-radius: 28px;
+    background: var(--color-white);
+  }
+  .side {
+    flex: none;
+    width: 400px;
+  }
+  .desktopOnly {
+    display: block;
+  }
+  .mobileOnly {
+    display: none;
+  }
+  .footer {
+    position: static;
+    max-width: 1100px;
+    margin: 18px auto 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    justify-content: flex-end;
+  }
+  .footer > :last-child {
+    width: auto;
+    min-width: 180px;
+  }
+}
