@@ -38,6 +38,21 @@ cp .env.example .env   # puis remplacer les valeurs marquées PROD
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
+## Base de données
+
+Schéma Drizzle dans `packages/db/src/schema.ts`, migrations SQL versionnées dans `packages/db/drizzle/`
+(la migration `integrity` porte les contraintes que le schéma déclaratif ne sait pas exprimer :
+non-chevauchement, propriétaire minimum, versionnage).
+
+```bash
+pnpm --filter @tableau-clair/db db:generate   # nouvelle migration après un changement de schéma
+pnpm --filter @tableau-clair/db db:migrate    # applique les migrations (DATABASE_URL)
+pnpm --filter @tableau-clair/db db:seed       # données de démonstration (base vide uniquement)
+```
+
+L'API applique les migrations au démarrage. Les tests d'intégration créent une base jetable par
+fichier sur le PostgreSQL de `docker compose up -d` (ou `TEST_DATABASE_URL`).
+
 ## Commandes
 
 | Commande         | Rôle                                       |

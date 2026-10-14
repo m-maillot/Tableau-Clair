@@ -10,10 +10,10 @@ Modéliser les entités de la spec §5 avec Drizzle, y compris `Membership`, `In
 
 ## Critères d'acceptation
 
-- [ ] Toutes les entités §5 avec `id` UUID, `createdAt`, `updatedAt`, `updatedBy`, `version`
-- [ ] Contraintes d'intégrité : unicité rangée/index, un propriétaire minimum par logement, un seul lien actif par tableau
-- [ ] Migrations versionnées, jeu de données de démonstration
-- [ ] Tests d'intégration sur une base réelle
+- [x] Toutes les entités §5 avec `id` UUID, `createdAt`, `updatedAt`, `updatedBy`, `version`
+- [x] Contraintes d'intégrité : unicité rangée/index, un propriétaire minimum par logement, un seul lien actif par tableau
+- [x] Migrations versionnées, jeu de données de démonstration
+- [x] Tests d'intégration sur une base réelle
 
 ## Dépendances
 

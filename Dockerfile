@@ -23,12 +23,14 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 FROM node:24-alpine AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
-    WEB_DIST=/app/web
+    WEB_DIST=/app/web \
+    MIGRATIONS_DIR=/app/migrations
 WORKDIR /app
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=deps /repo/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
 COPY --from=build /repo/apps/web/dist ./web
+COPY --from=build /repo/packages/db/drizzle ./migrations
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \

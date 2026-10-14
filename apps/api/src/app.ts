@@ -7,6 +7,8 @@ import { healthResponseSchema } from '@tableau-clair/contracts';
 export interface AppOptions {
   /** Dossier du build du front à servir (production, un seul service applicatif). */
   webDist?: string | undefined;
+  /** Vérifie la connexion à la base ; doit rejeter si elle est indisponible. */
+  checkDatabase?: (() => Promise<unknown>) | undefined;
 }
 
 export function buildApp(options: AppOptions = {}) {
@@ -14,7 +16,15 @@ export function buildApp(options: AppOptions = {}) {
 
   app.register(
     async (api) => {
-      api.get('/health', async () => healthResponseSchema.parse({ status: 'ok' }));
+      api.get('/health', async (request, reply) => {
+        try {
+          await options.checkDatabase?.();
+        } catch (error) {
+          request.log.error({ err: error }, 'Base de données indisponible');
+          return reply.code(503).send(healthResponseSchema.parse({ status: 'error' }));
+        }
+        return healthResponseSchema.parse({ status: 'ok' });
+      });
     },
     { prefix: '/api' },
   );

@@ -20,3 +20,9 @@ Spec §9. Better Auth, sans mot de passe, inscription fermée.
 ## Dépendances
 
 schema-db
+
+## Note issue du ticket « Schéma de base de données »
+
+La table `users` (uuid, e-mail unique insensible à la casse, `display_name`) existe déjà. Better Auth
+doit être configuré pour s'y adosser (nom de table, identifiants UUID) et ajouter ses propres tables
+`session`, `account` et `verification` par une nouvelle migration.
