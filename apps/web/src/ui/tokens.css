@@ -1,0 +1,51 @@
+/*
+ * Tokens de design — source unique des couleurs, rayons et ombres (spec §15.1).
+ * Les contrastes AA de chaque paire texte / fond sont vérifiés par `tokens.test.ts`.
+ * Mode sombre : non décidé, les composants ne lisent que ces variables.
+ */
+:root {
+  /* Couleurs */
+  --color-ink: #0d1b3d;
+  --color-blue: #0f5bff;
+  --color-lime: #c5f26a;
+  --color-surface: #f1f4fa;
+  --color-bg-soft: #eaf0fe;
+  --color-muted: #56627f;
+  --color-white: #ffffff;
+  --color-module-other: #d5e1ff;
+  /* Maquettes : #8e9ab8 (2,8:1 sur blanc). Foncé au minimum pour atteindre 3:1 (WCAG 1.4.11). */
+  --color-slot-border: #8592b0;
+  --color-divider: #dde3ef;
+  --color-handle: #c9d1e3;
+
+  /*
+   * Statuts : jamais portés par la couleur seule (icône + libellé). Les trois fonds sont proches
+   * en luminosité : c'est l'icône et le texte qui les distinguent, pas la teinte.
+   */
+  --color-status-verified-bg: #d9f7a0;
+  --color-status-verified-fg: #1f4d00;
+  --color-status-assumed-bg: #ffe7cc;
+  --color-status-assumed-fg: #7a3b00;
+  --color-status-assumed-border: #b45309;
+  --color-status-unknown-bg: #e3e7f0;
+  --color-status-unknown-fg: #0d1b3d;
+
+  /* Rayons */
+  --radius-card: 24px;
+  --radius-card-lg: 28px;
+  --radius-button: 16px;
+  --radius-button-sm: 14px;
+  --radius-chip: 14px;
+  --radius-sheet: 32px;
+
+  /* Ombres */
+  --shadow-floating: 0 8px 28px rgba(13, 27, 61, 0.14);
+  --shadow-sheet: 0 -10px 40px rgba(13, 27, 61, 0.16);
+
+  /* Dimensions */
+  --touch-target: 44px;
+  --focus-ring: 3px solid var(--color-ink);
+
+  /* Typographie */
+  --font-sans: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, sans-serif;
+}

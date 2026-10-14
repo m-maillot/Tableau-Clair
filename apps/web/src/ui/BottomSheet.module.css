@@ -1,0 +1,76 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 27, 61, 0.45);
+}
+
+.sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 92dvh;
+  padding: 10px 20px 20px;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  background: var(--color-white);
+  box-shadow: var(--shadow-sheet);
+  outline: none;
+}
+
+/* Feuille persistante : posée dans le flux de l'écran, au-dessus de la barre d'onglets. */
+.persistent {
+  position: fixed;
+  z-index: 15;
+}
+
+.handle {
+  align-self: center;
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--color-handle);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.titles {
+  min-width: 0;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.description {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.body {
+  flex: 1;
+  margin-top: 14px;
+  overflow-y: auto;
+}
+
+.footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}

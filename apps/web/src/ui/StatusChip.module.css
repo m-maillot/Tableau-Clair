@@ -1,0 +1,29 @@
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.verified {
+  background: var(--color-status-verified-bg);
+  color: var(--color-status-verified-fg);
+}
+
+.assumed {
+  background: var(--color-status-assumed-bg);
+  color: var(--color-status-assumed-fg);
+  border-color: var(--color-status-assumed-border);
+}
+
+.unknown {
+  background: var(--color-status-unknown-bg);
+  color: var(--color-status-unknown-fg);
+}

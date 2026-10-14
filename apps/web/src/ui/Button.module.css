@@ -1,0 +1,103 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-weight: 700;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: transform 0.08s ease;
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Tailles */
+.md {
+  min-height: var(--touch-target);
+  padding: 0 18px;
+  border-radius: var(--radius-button-sm);
+  font-size: 14px;
+}
+
+.lg {
+  min-height: 54px;
+  padding: 0 20px;
+  border-radius: var(--radius-button);
+  font-size: 16px;
+}
+
+.full {
+  width: 100%;
+}
+
+/* Variantes */
+.primary {
+  background: var(--color-blue);
+  color: var(--color-white);
+}
+
+.secondary {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.lime {
+  background: var(--color-lime);
+  color: var(--color-ink);
+  font-weight: 800;
+}
+
+.outline {
+  background: var(--color-white);
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--color-blue);
+}
+
+/* Bouton icône : cible tactile de 44 px */
+.iconButton {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.icon-surface {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.icon-ink {
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+
+.icon-white {
+  background: var(--color-white);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-floating);
+}

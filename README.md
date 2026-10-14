@@ -111,6 +111,19 @@ une URL signée valable 5 minutes, utilisable directement dans une balise `<img>
 - Compatibilité S3 : `S3_FORCE_PATH_STYLE=true` pour MinIO ; les sommes de contrôle automatiques du SDK
   sont désactivées (refusées par plusieurs S3 compatibles).
 
+## Design system
+
+Tokens en variables CSS dans `apps/web/src/ui/tokens.css`, composants de base dans `apps/web/src/ui/`
+(`Button`, `IconButton`, `TextField`, `StatusChip`, `TypeChip`, `Stepper`, `TabBar`, `BottomSheet`),
+police Plus Jakarta Sans auto-hébergée (aucune requête vers Google Fonts).
+
+- **Catalogue** : `pnpm dev` puis `http://localhost:5173/catalogue.html` (page interne, absente du build).
+- **Accessibilité** : zones tactiles ≥ 44 px, focus visible, bouton-icône toujours nommé
+  (`label` obligatoire), statut jamais porté par la couleur seule. Les paires texte / fond des tokens
+  sont vérifiées AA par `tokens.test.ts`.
+- **Écart avec les maquettes** : `--color-slot-border` passe de `#8e9ab8` (2,8:1 sur blanc) à `#8592b0`
+  (3,1:1), seuil WCAG 1.4.11 pour un élément d'interface.
+
 ## Commandes
 
 | Commande         | Rôle                                       |
