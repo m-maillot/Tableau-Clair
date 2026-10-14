@@ -111,6 +111,17 @@ une URL signée valable 5 minutes, utilisable directement dans une balise `<img>
 - Compatibilité S3 : `S3_FORCE_PATH_STYLE=true` pour MinIO ; les sommes de contrôle automatiques du SDK
   sont désactivées (refusées par plusieurs S3 compatibles).
 
+## Écrans et routes
+
+| Route        | Écran                            | Accès                                                |
+| ------------ | -------------------------------- | ---------------------------------------------------- |
+| `/connexion` | Connexion (lien magique, Google) | public ; redirige vers `/` si connecté               |
+| `/`          | Accueil (provisoire)             | session requise, sinon redirection vers `/connexion` |
+
+Le front parle à l'API en same-origin (`/api/*`, proxy Vite en dev) via `apps/web/src/api/client.ts`.
+Après une tentative échouée, le serveur renvoie sur `/connexion?error=…` (`INVALID_TOKEN`,
+`access_denied`…) : les messages sont volontairement neutres et ne disent pas si une adresse existe.
+
 ## Design system
 
 Tokens en variables CSS dans `apps/web/src/ui/tokens.css`, composants de base dans `apps/web/src/ui/`

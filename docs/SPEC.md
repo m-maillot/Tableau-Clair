@@ -439,8 +439,10 @@ Accessibilité : un statut n'est **jamais** porté par la couleur seule (couleur
 | **Plan** | Onglets d'étages, « + Équipement », bandeau du circuit sélectionné, pièces sur fond quadrillé (image de fond), équipements en surbrillance / autre circuit / à identifier, légende. | §7.4 |
 | **À vérifier** | Bandeau « N liaisons à confirmer », filtres (Tout / Supposées / Sans lien), cartes avec actions rapides. | §7.6 |
 | **Éditeur (bureau)** | Sidebar sombre, barre d'outils (recherche, annuler/rétablir, imprimer), palette, rangées pleine largeur (24 colonnes), panneau de détail à droite. Fluide : sidebar et panneau passent sous le contenu en largeur étroite. | §7.2 |
+| **Paramètres du tableau** | Nom, emplacement, photo, steppers rangées / modules par rangée, notes ; occupation par rangée ; message de refus si réduction sous l'occupation ; actions Dupliquer et Supprimer ; barre fixe Annuler / Enregistrer. Version bureau : formulaire + aperçu de la réduction (zone hors rail hachurée), duplication (nom de la copie) et zone de suppression. | §7.1 |
+| **Supprimer le tableau** | Feuille de confirmation : ce qui est supprimé (rangées, éléments, photo), ce qui est conservé (équipements du plan, liaisons passées à « inconnue »), export JSON préalable, saisie du nom pour activer le bouton danger. | §7.1, §5 |
 
-Navigation : Connexion → Accueil ; Accueil → Tableaux → Éditeur → (module libre → Ajout) | (élément → Fiche → Plan) ; Accueil → Plan ; Accueil → À vérifier → (Plan | Fiche). Barre d'onglets mobile : Accueil · Tableaux · Plan · À vérifier.
+Navigation : Connexion → Accueil ; Accueil → Tableaux → Éditeur → Paramètres du tableau → Supprimer ; Éditeur → (module libre → Ajout) | (élément → Fiche → Plan) ; Accueil → Plan ; Accueil → À vérifier → (Plan | Fiche). Barre d'onglets mobile : Accueil · Tableaux · Plan · À vérifier.
 
 ### 15.5 Règles de comportement issues des maquettes
 
@@ -448,10 +450,12 @@ Navigation : Connexion → Accueil ; Accueil → Tableaux → Éditeur → (modu
 - Dans « Ajout », les types dont la largeur ne tient pas dans l'espace restant sont **grisés** ; un ajout qui dépasse la capacité ou chevauche est refusé.
 - « Autre appareil… » ouvre le formulaire d'élément personnalisé (5 champs minimaux).
 - Sur la connexion, une adresse refusée reçoit un message **neutre** qui ne révèle pas l'existence d'un compte.
+- Réduire le nombre de modules par rangée **sous l'occupation maximale** d'une rangée est refusé : le stepper passe en erreur et un message cite la rangée et l'occupation (« Impossible de descendre sous 18 modules. La rangée 1 en occupe 18… »). Mêmes règles côté serveur (§5).
+- La **duplication** copie rangées et éléments, **pas** les liaisons avec les équipements (un équipement n'a qu'un seul disjoncteur) ; le nom proposé est « <nom> (copie) ».
+- La **suppression** ne supprime pas les équipements du plan : leurs liaisons passent à « inconnue » (§5). Elle exige la saisie du nom du tableau et propose l'export JSON ; le bouton reste désactivé tant que le nom ne correspond pas.
 
 ### 15.6 Reste à dessiner
 
-- Création / paramétrage d'un tableau (nom, emplacement, photo, rangées, modules par rangée), duplication, suppression avec confirmation (§7.1).
 - Suppression d'un disjoncteur avec équipements liés : confirmation « passent à inconnu » (§5).
 - Conflit d'édition concurrente : garder ma version / recharger (§7.2).
 - Formulaire « Autre appareil » et enregistrement du modèle personnalisé (§7.3).

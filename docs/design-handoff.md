@@ -1,6 +1,6 @@
 # Tableau Clair — Récapitulatif design (handoff)
 
-Maquettes : https://claude.ai/artifact/XCVWg2AM1MRKCnHLmdte8A (canevas Design, 8 écrans).
+Maquettes : https://claude.ai/artifact/XCVWg2AM1MRKCnHLmdte8A (canevas Design, 11 écrans).
 Référence fonctionnelle : la spec v1.0 (§ cités ci-dessous). Ce document décrit **ce que montrent les maquettes** pour servir de base au découpage en issues et au développement du front (React + Vite, éditeur en SVG/DOM).
 
 > Les maquettes sont statiques : les interactions décrites en « Comportement » sont l'intention, pas encore prototypée.
@@ -100,11 +100,21 @@ Bandeau « N liaisons à confirmer », filtres (Tout / Supposées / Sans lien), 
 Sidebar sombre, barre d'outils (recherche, annuler/rétablir, « Imprimer le récapitulatif »), palette « Ajouter sur le rail », rangées pleine largeur (24 colonnes `1fr`, libellés verticaux), panneau de détail à droite (libellé, calibre, courbe, section, différentiel amont, équipements liés + statuts, Enregistrer, Voir sur le plan, traçabilité).
 - Fluide : sidebar et panneau passent sous le contenu en largeur étroite.
 
+### 3.9 Paramètres du tableau (`TableauParam`, `TableauBureau`) (§7.1)
+- Mobile : nom, emplacement, photo (vignette + « Changer »), steppers **Rangées** et **Modules par rangée**, notes, puis « Dupliquer ce tableau » et « Supprimer le tableau… » ; barre fixe Annuler / Enregistrer.
+- **Refus de réduction** : si la valeur demandée est inférieure à l'occupation d'une rangée, le stepper passe en rouge (bordure + fond + icône) et un `role="alert"` indique le minimum possible et la rangée en cause. Barres d'occupation par rangée en dessous.
+- Bureau : formulaire à gauche ; à droite aperçu « à N modules » (zone hors rail hachurée, élément fautif entouré), duplication (champ nom de la copie + « Créer la copie ») et zone de suppression.
+- Nouveau token : `danger` fond `#FDE8E6`, texte `#8A1C12`, bordure `#B42318` (toujours avec icône + texte).
+
+### 3.10 Supprimer le tableau (`TableauSuppr`) (§7.1, §5)
+Feuille basse : titre « Supprimer « nom » ? », listes « supprimé » / « conservé », lien d'export JSON, champ de confirmation par saisie du nom, bouton danger désactivé tant que le nom ne correspond pas, Annuler.
+
 ## 4. Navigation
 
 ```
 Connexion → Accueil
-Accueil ── Tableaux → Éditeur ── module libre → Ajout → Éditeur
+Accueil ── Tableaux → Éditeur ── paramètres → Paramètres du tableau → Supprimer
+                          ├─ module libre → Ajout → Éditeur
                           └─ élément → Fiche → Plan
         ── Plan
         ── À vérifier → (Plan | Fiche)
@@ -113,7 +123,6 @@ Barre d'onglets mobile : Accueil · Tableaux · Plan · À vérifier. Compte / e
 
 ## 5. Ce qui n'est pas encore dessiné
 
-- Création / paramétrage d'un tableau (nom, emplacement, photo, rangées, modules par rangée), duplication, suppression avec confirmation (§7.1).
 - Suppression d'un disjoncteur avec équipements liés → confirmation « passent à inconnu » (§5).
 - Conflit d'édition concurrente (garder ma version / recharger) (§7.2).
 - Formulaire « Autre appareil » et enregistrement du modèle personnalisé (§7.3).

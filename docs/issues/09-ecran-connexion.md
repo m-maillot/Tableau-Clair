@@ -10,9 +10,9 @@ Maquette « Connexion » (§15.4).
 
 ## Critères d'acceptation
 
-- [ ] E-mail + « Recevoir un lien magique », « Continuer avec Google »
-- [ ] États : lien envoyé, adresse refusée (message neutre), erreur réseau
-- [ ] Mention « inscriptions fermées »
+- [x] E-mail + « Recevoir un lien magique », « Continuer avec Google »
+- [x] États : lien envoyé, adresse refusée (message neutre), erreur réseau
+- [x] Mention « inscriptions fermées »
 
 ## Dépendances
 
