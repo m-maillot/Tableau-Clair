@@ -10,10 +10,10 @@ Règles métier pures, partagées par le navigateur (retour immédiat) et le ser
 
 ## Critères d'acceptation
 
-- [ ] Fonctions pures : placer/déplacer/redimensionner un élément, détecter dépassement et chevauchement, calcul d'occupation par rangée
-- [ ] Règles de liaison : un équipement ↔ un disjoncteur, passage à `unknown` à la suppression d'un disjoncteur
-- [ ] Largeurs possibles à partir d'un module libre (pour griser les types dans « Ajout »)
-- [ ] Couverture de tests élevée, aucune dépendance à React ou à la base
+- [x] Fonctions pures : placer/déplacer/redimensionner un élément, détecter dépassement et chevauchement, calcul d'occupation par rangée
+- [x] Règles de liaison : un équipement ↔ un disjoncteur, passage à `unknown` à la suppression d'un disjoncteur
+- [x] Largeurs possibles à partir d'un module libre (pour griser les types dans « Ajout »)
+- [x] Couverture de tests élevée, aucune dépendance à React ou à la base
 
 ## Dépendances
 
