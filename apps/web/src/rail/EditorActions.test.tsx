@@ -660,6 +660,31 @@ describe('circuit d’un disjoncteur', () => {
     await waitFor(() => expect(circuit).toHaveTextContent('Prise libre'));
   });
 
+  it('confirme comme vérifiées les liaisons de ce qui est tombé', async () => {
+    const server = createServer();
+    renderEditor();
+    await select(/^Four/);
+    const circuit = await screen.findByRole('region', { name: 'Circuit alimenté' });
+    await userEvent.click(within(circuit).getByRole('button', { name: 'Je viens de le couper' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Qu’est-ce qui est tombé ?' });
+    const confirm = within(dialog).getByRole('button', { name: 'Confirmer' });
+    expect(confirm).toBeDisabled();
+
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: /Hotte/ }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirmer 1 équipement' }));
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'PUT',
+        url: `/api/fixtures/${ID(801)}/link`,
+        body: { breakerId: ID(502), status: 'verified' },
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Qu’est-ce qui est tombé ?' })).toBeNull(),
+    );
+  });
+
   it('ne propose ni lier ni délier à un lecteur', async () => {
     createServer({ role: 'viewer' });
     renderEditor();
@@ -668,6 +693,7 @@ describe('circuit d’un disjoncteur', () => {
     expect(circuit).toHaveTextContent('Hotte');
     expect(within(circuit).queryByRole('button', { name: 'Lier un équipement' })).toBeNull();
     expect(within(circuit).queryByRole('button', { name: 'Délier Hotte' })).toBeNull();
+    expect(within(circuit).queryByRole('button', { name: 'Je viens de le couper' })).toBeNull();
   });
 });
 

@@ -33,6 +33,7 @@ export function CircuitSection({ elementId, propertyId, canEdit }: CircuitSectio
   const circuit = useBreakerCircuit(elementId);
   const { unlink, busy } = useLinkMutations(propertyId);
   const [picking, setPicking] = useState(false);
+  const [cutting, setCutting] = useState(false);
 
   if (circuit.isPending) return <p className={styles.empty}>Chargement du circuit…</p>;
   if (circuit.isError || !circuit.data) {
@@ -102,12 +103,26 @@ export function CircuitSection({ elementId, propertyId, canEdit }: CircuitSectio
             Voir sur le plan
           </Link>
         )}
+        {canEdit && fixtures.length > 0 && (
+          <Button size="md" variant="secondary" icon="bolt" onClick={() => setCutting(true)}>
+            Je viens de le couper
+          </Button>
+        )}
         {canEdit && (
           <Button size="md" variant="secondary" icon="plug" onClick={() => setPicking(true)}>
             Lier un équipement
           </Button>
         )}
       </div>
+
+      {cutting && (
+        <JustCutSheet
+          propertyId={propertyId}
+          breakerId={elementId}
+          fixtures={fixtures}
+          onClose={() => setCutting(false)}
+        />
+      )}
 
       {picking && (
         <FixturePickerSheet
@@ -193,6 +208,90 @@ function FixturePickerSheet({ propertyId, breakerId, onClose }: FixturePickerPro
       {link.isError && (
         <p className={styles.empty} role="alert">
           La liaison a échoué. Réessayez.
+        </p>
+      )}
+    </BottomSheet>
+  );
+}
+
+interface JustCutProps {
+  propertyId: string;
+  breakerId: string;
+  fixtures: BreakerCircuit['fixtures'];
+  onClose: () => void;
+}
+
+/**
+ * « Je viens de le couper : qu'est-ce qui est tombé ? » Les équipements cochés passent à
+ * « vérifiée » ; les autres restent inchangés (on ne déduit rien d'un équipement non testé).
+ */
+function JustCutSheet({ propertyId, breakerId, fixtures, onClose }: JustCutProps) {
+  const { link, busy } = useLinkMutations(propertyId);
+  const [fell, setFell] = useState<Set<string>>(new Set());
+  const [failed, setFailed] = useState(false);
+
+  const toggle = (id: string) =>
+    setFell((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  async function confirm() {
+    setFailed(false);
+    try {
+      for (const id of fell) {
+        await link.mutateAsync({ fixtureId: id, breakerId, status: 'verified' });
+      }
+      onClose();
+    } catch {
+      setFailed(true);
+    }
+  }
+
+  return (
+    <BottomSheet
+      open
+      onClose={onClose}
+      title="Qu’est-ce qui est tombé ?"
+      description="Cochez ce qui n’est plus alimenté : ces liaisons passent à « vérifiée »."
+      footer={
+        <div className={styles.actions} style={{ flex: 1 }}>
+          <Button variant="secondary" size="lg" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button size="lg" fullWidth disabled={busy || fell.size === 0} onClick={confirm}>
+            {fell.size === 0
+              ? 'Confirmer'
+              : `Confirmer ${fell.size} ${plural(fell.size, 'équipement', 'équipements')}`}
+          </Button>
+        </div>
+      }
+    >
+      <ul className={styles.list}>
+        {fixtures.map((f) => (
+          <li key={f.id}>
+            <label className={styles.fixture}>
+              <input
+                type="checkbox"
+                checked={fell.has(f.id)}
+                onChange={() => toggle(f.id)}
+                style={{ width: 22, height: 22 }}
+              />
+              <span className={styles.fixtureName}>
+                {f.label}{' '}
+                <span className={styles.sub}>
+                  {f.roomName} · {f.floorName}
+                </span>
+              </span>
+              <StatusChip status={f.status} />
+            </label>
+          </li>
+        ))}
+      </ul>
+      {failed && (
+        <p className={styles.empty} role="alert">
+          Certaines liaisons n’ont pas pu être confirmées. Réessayez.
         </p>
       )}
     </BottomSheet>
