@@ -10,12 +10,12 @@ Spec §9. Better Auth, sans mot de passe, inscription fermée.
 
 ## Critères d'acceptation
 
-- [ ] Lien magique par e-mail via Brevo (SMTP ou API), Mailpit en local ; usage unique et courte durée
-- [ ] Connexion Google (OAuth/OIDC)
-- [ ] Liste d'adresses autorisées par variable d'environnement, vérifiée côté serveur pour tout fournisseur ; réponse neutre pour une adresse refusée
-- [ ] Sessions en cookie `HttpOnly`/`Secure`/`SameSite` + protection CSRF
-- [ ] Limitation de débit sur demande de lien et connexions ; journalisation des refus
-- [ ] Tests d'intégration : adresse autorisée, refusée, lien expiré, lien réutilisé
+- [x] Lien magique par e-mail via Brevo (SMTP ou API), Mailpit en local ; usage unique et courte durée
+- [x] Connexion Google (OAuth/OIDC) — configuration vérifiée par test ; le parcours complet avec Google nécessite un client OAuth réel (voir README)
+- [x] Liste d'adresses autorisées par variable d'environnement, vérifiée côté serveur pour tout fournisseur ; réponse neutre pour une adresse refusée
+- [x] Sessions en cookie `HttpOnly`/`Secure`/`SameSite` + protection CSRF
+- [x] Limitation de débit sur demande de lien et connexions ; journalisation des refus
+- [x] Tests d'intégration : adresse autorisée, refusée, lien expiré, lien réutilisé
 
 ## Dépendances
 

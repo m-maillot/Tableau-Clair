@@ -59,11 +59,73 @@ export const users = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     email: text('email').notNull(),
+    emailVerified: boolean('email_verified').notNull().default(false),
     displayName: text('display_name'),
+    image: text('image'),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
   (t) => [uniqueIndex('users_email_unique').on(sql`lower(${t.email})`)],
+);
+
+// --- Authentification (tables attendues par Better Auth, ticket 05) --------------------------------
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: text('token').notNull().unique(),
+    expiresAt: timestamptz('expires_at').notNull(),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [index('sessions_user_idx').on(t.userId)],
+);
+
+/** Comptes liés (Google, Apple…) : un utilisateur peut en avoir plusieurs. */
+export const accounts = pgTable(
+  'accounts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accountId: text('account_id').notNull(),
+    providerId: text('provider_id').notNull(),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    idToken: text('id_token'),
+    accessTokenExpiresAt: timestamptz('access_token_expires_at'),
+    refreshTokenExpiresAt: timestamptz('refresh_token_expires_at'),
+    scope: text('scope'),
+    /** Inutilisé : l'authentification est sans mot de passe. */
+    password: text('password'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('accounts_user_idx').on(t.userId),
+    uniqueIndex('accounts_provider_account_unique').on(t.providerId, t.accountId),
+  ],
+);
+
+/** Jetons à usage unique (liens magiques). */
+export const verifications = pgTable(
+  'verifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: timestamptz('expires_at').notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [index('verifications_identifier_idx').on(t.identifier)],
 );
 
 /** Logement : unité de partage. */

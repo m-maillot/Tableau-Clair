@@ -3,12 +3,16 @@ import { join } from 'node:path';
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
 import { healthResponseSchema } from '@tableau-clair/contracts';
+import type { Auth } from './auth/auth';
+import { registerAuthRoutes } from './auth/routes';
 
 export interface AppOptions {
   /** Dossier du build du front à servir (production, un seul service applicatif). */
   webDist?: string | undefined;
   /** Vérifie la connexion à la base ; doit rejeter si elle est indisponible. */
   checkDatabase?: (() => Promise<unknown>) | undefined;
+  /** Authentification : sans elle, seules les routes publiques sont montées. */
+  auth?: { instance: Auth; appUrl: string } | undefined;
 }
 
 export function buildApp(options: AppOptions = {}) {
@@ -28,6 +32,8 @@ export function buildApp(options: AppOptions = {}) {
     },
     { prefix: '/api' },
   );
+
+  if (options.auth) registerAuthRoutes(app, options.auth.instance, options.auth.appUrl);
 
   const { webDist } = options;
   if (webDist && existsSync(join(webDist, 'index.html'))) {

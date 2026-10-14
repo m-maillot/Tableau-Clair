@@ -53,6 +53,21 @@ pnpm --filter @tableau-clair/db db:seed       # données de démonstration (base
 L'API applique les migrations au démarrage. Les tests d'intégration créent une base jetable par
 fichier sur le PostgreSQL de `docker compose up -d` (ou `TEST_DATABASE_URL`).
 
+## Authentification
+
+Sans mot de passe : lien magique par e-mail et Google (Apple en V1.1). Les inscriptions sont fermées :
+seules les adresses de `ALLOWED_EMAILS` obtiennent un compte ou une session, quel que soit le
+fournisseur ; une adresse refusée reçoit la même réponse qu'une adresse admise et le refus est journalisé.
+
+- **Dev** : le lien magique arrive dans Mailpit (`http://localhost:8025`), l'URL du lien pointe sur `APP_URL`.
+- **Google** : créer un client OAuth « Application Web » et déclarer l'URI de redirection
+  `{APP_URL}/api/auth/callback/google`, puis renseigner `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+  Laissés vides, la connexion Google est simplement indisponible.
+- **Production** : relais SMTP Brevo (`SMTP_HOST=smtp-relay.brevo.com`, port 587, identifiants SMTP Brevo)
+  et domaine d'envoi authentifié (SPF, DKIM, DMARC). L'API refuse de démarrer avec le secret d'exemple
+  ou une `APP_URL` en `http`.
+- Routes : `/api/auth/*` (Better Auth) et `GET /api/me` (utilisateur courant, 401 sinon).
+
 ## Commandes
 
 | Commande         | Rôle                                       |
