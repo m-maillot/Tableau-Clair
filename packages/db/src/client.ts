@@ -21,3 +21,9 @@ export const defaultMigrationsFolder = new URL('../drizzle', import.meta.url).pa
 export async function runMigrations(db: Database, migrationsFolder = defaultMigrationsFolder) {
   await migrate(db, { migrationsFolder });
 }
+
+/** Transaction ouverte par `db.transaction(...)`. */
+export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+/** Connexion ou transaction : les requêtes s'écrivent de la même façon sur les deux. */
+export type DbExecutor = Database | Transaction;

@@ -1,6 +1,7 @@
 import { createDb, defaultMigrationsFolder, runMigrations, sql } from '@tableau-clair/db';
 import { buildApp } from './app';
 import { createAuth } from './auth/auth';
+import { toWebHeaders } from './auth/routes';
 import { loadConfig } from './config';
 import { createSmtpMailer } from './mailer';
 
@@ -46,6 +47,11 @@ try {
     webDist: process.env.WEB_DIST,
     checkDatabase: () => db.execute(sql`select 1`),
     auth: { instance: auth, appUrl: config.appUrl },
+    api: {
+      db,
+      resolveUserId: async (request) =>
+        (await auth.api.getSession({ headers: toWebHeaders(request) }))?.user.id ?? null,
+    },
   });
   app.addHook('onClose', async () => close());
   await app.listen({ port, host });

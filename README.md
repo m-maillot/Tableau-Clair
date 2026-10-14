@@ -68,6 +68,33 @@ fournisseur ; une adresse refusée reçoit la même réponse qu'une adresse admi
   ou une `APP_URL` en `http`.
 - Routes : `/api/auth/*` (Better Auth) et `GET /api/me` (utilisateur courant, 401 sinon).
 
+## API
+
+Toutes les routes `/api/*` (hors santé et authentification) exigent une session. Les corps et réponses
+sont décrits par les schémas Zod de `packages/contracts`.
+
+| Méthode                | Route                        | Rôle minimum      |
+| ---------------------- | ---------------------------- | ----------------- |
+| `GET` `POST`           | `/api/properties`            | membre / connecté |
+| `GET` `PATCH`          | `/api/properties/:id`        | membre / éditeur  |
+| `DELETE`               | `/api/properties/:id`        | propriétaire      |
+| `GET` `POST`           | `/api/properties/:id/boards` | membre / éditeur  |
+| `GET` `PATCH` `DELETE` | `/api/boards/:id`            | membre / éditeur  |
+| `POST`                 | `/api/boards/:id/duplicate`  | éditeur           |
+| `PATCH`                | `/api/rows/:id` (capacité)   | éditeur           |
+| `POST`                 | `/api/rows/:id/elements`     | éditeur           |
+| `GET` `PATCH` `DELETE` | `/api/elements/:id`          | membre / éditeur  |
+
+Conventions :
+
+- **404** pour toute ressource hors de ses logements (jamais 403 : on ne révèle pas son existence) ;
+  **403** si le rôle est insuffisant.
+- **409 `version_conflict`** : le `version` envoyé n'est plus le courant ; `details` contient l'état actuel.
+- **422** : règle métier refusée (`overlap`, `out_of_bounds`, `row_not_empty`, `capacity_below_content`…),
+  avec `details` exploitable par l'interface.
+- Les écritures sur une rangée sont sérialisées (verrou de ligne) : deux ajouts simultanés au même
+  emplacement ne peuvent pas réussir tous les deux.
+
 ## Commandes
 
 | Commande         | Rôle                                       |
