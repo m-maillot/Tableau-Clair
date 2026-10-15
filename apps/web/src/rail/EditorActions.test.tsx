@@ -482,14 +482,59 @@ describe('déplacement ← →', () => {
     expect(undoButton()).toBeDisabled();
   });
 
-  it('signale un conflit de version', async () => {
+  it('ouvre la comparaison en cas de conflit et garde ma version sur demande', async () => {
     const server = createServer();
     renderEditor();
     await select(/^Plaques/);
-    server.elements.find((e) => e.label === 'Plaques')!.version = 5; // modifié ailleurs
+    const saved = server.elements.find((e) => e.label === 'Plaques')!;
+    saved.version = 5; // modifié ailleurs
+    saved.position = 5;
 
     await userEvent.click(right());
-    expect(await screen.findByRole('alert')).toHaveTextContent('modifié ailleurs');
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Cet élément a été modifié entre-temps',
+    });
+    expect(dialog).toHaveAccessibleDescription(/version enregistrée n° 5/);
+    const row = within(dialog).getByRole('row', { name: /Module/ });
+    expect(row).toHaveTextContent('module 5');
+    expect(row).toHaveTextContent('module 6');
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Garder ma version' }));
+    await waitFor(() => expect(server.position('Plaques')).toBe(4));
+    expect(server.writes().at(-1)).toMatchObject({ body: { version: 5, position: 4 } });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('recharge la version enregistrée et abandonne le déplacement', async () => {
+    const server = createServer();
+    renderEditor();
+    await select(/^Plaques/);
+    const saved = server.elements.find((e) => e.label === 'Plaques')!;
+    saved.version = 5;
+    saved.position = 5;
+
+    await userEvent.click(right());
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Cet élément a été modifié entre-temps',
+    });
+    const writes = server.writes().length;
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Recharger la version enregistrée' }),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(server.writes()).toHaveLength(writes);
+    expect(screen.getByRole('button', { name: /^Plaques.*module 6$/ })).toBeInTheDocument();
+  });
+
+  it('propose de réessayer après un échec d’enregistrement', async () => {
+    const server = createServer({ failNext: 1 });
+    renderEditor();
+    await select(/^Plaques/);
+    await userEvent.click(right());
+    expect(await screen.findByRole('alert')).toHaveTextContent('La modification a échoué');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
+    await waitFor(() => expect(server.position('Plaques')).toBe(4));
   });
 });
 

@@ -4,7 +4,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { lastModifiedLabel } from '../home/format';
 import { useBoard, useProperties } from '../home/queries';
-import { DESKTOP_QUERY, Icon, IconButton, useMediaQuery } from '../ui';
+import { ApiResponseError } from '../api/client';
+import { ConflictSheet, type Conflict } from '../conflict/ConflictSheet';
+import { compareFields } from '../conflict/compare';
+import { useCanWrite } from '../net/status';
+import {
+  Button,
+  DESKTOP_QUERY,
+  ErrorState,
+  Icon,
+  IconButton,
+  LoadingState,
+  useMediaQuery,
+} from '../ui';
 import { KIND_LABEL } from './appearance';
 import { AddElementSheet } from './AddElementSheet';
 import { DeleteElementSheet } from './DeleteElementSheet';
@@ -46,7 +58,8 @@ export function EditorPage() {
   const data = board.data;
   const elementId = params.get('element');
   const role = properties.data?.find((p) => p.id === data?.propertyId)?.role;
-  const canEdit = role !== 'viewer';
+  const online = useCanWrite();
+  const canEdit = role !== 'viewer' && online;
 
   const selected = useMemo(() => {
     if (!data || !elementId) return null;
@@ -101,18 +114,28 @@ export function EditorPage() {
   if (board.isPending) {
     return (
       <main className={styles.page}>
-        <p role="status" className={styles.status}>
-          Chargement…
-        </p>
+        <LoadingState label="Chargement…" rows={3} />
       </main>
     );
   }
   if (board.isError || !data) {
+    const missing = board.error instanceof ApiResponseError && board.error.status === 404;
     return (
       <main className={styles.page}>
-        <p role="alert" className={styles.status}>
-          Ce tableau est introuvable.
-        </p>
+        <ErrorState
+          title={missing ? 'Ce tableau est introuvable.' : 'Impossible de charger le tableau.'}
+          text={
+            missing
+              ? 'Il a peut-être été supprimé, ou vous n’y avez plus accès.'
+              : 'Vérifiez votre connexion, puis réessayez.'
+          }
+          onRetry={missing ? undefined : () => void board.refetch()}
+          action={
+            <Button size="md" variant="secondary" onClick={() => navigate('/tableaux')}>
+              Retour aux tableaux
+            </Button>
+          }
+        />
       </main>
     );
   }
@@ -164,6 +187,30 @@ export function EditorPage() {
     setSlot(slot?.rowIndex === next.rowIndex && slot.position === next.position ? null : next);
   };
 
+  const conflictView: Conflict | null = actions.conflict
+    ? {
+        subject: actions.conflict.saved.label,
+        savedVersion: actions.conflict.saved.version,
+        savedAt: actions.conflict.saved.updatedAt,
+        rows: compareFields(
+          { rowId: actions.conflict.mine.rowId, position: actions.conflict.mine.position },
+          {
+            rowId: actions.conflict.saved.rowId,
+            position: actions.conflict.saved.position,
+          },
+          (key, value) => {
+            if (key === 'rowId') {
+              const row = data.rows.find((r) => r.id === value);
+              return row ? `Rangée ${row.index + 1}` : '—';
+            }
+            return `module ${Number(value) + 1}`;
+          },
+        ),
+        keep: () => void actions.keepConflict(),
+        reload: actions.dismissConflict,
+      }
+    : null;
+
   const hasSheet = !desktop && (!!selected || !!slot);
   const notice = actions.notice;
 
@@ -206,6 +253,12 @@ export function EditorPage() {
         />
       </header>
 
+      <ConflictSheet
+        conflict={conflictView}
+        busy={actions.busy}
+        onLater={actions.dismissConflict}
+      />
+
       {/* Annonce des résultats : succès en « status » (poli), refus en « alert » (immédiat). */}
       <div className={styles.noticeRegion}>
         {notice && (
@@ -214,6 +267,11 @@ export function EditorPage() {
             className={`${styles.notice} ${notice.tone === 'error' ? styles.noticeError : ''}`}
           >
             {notice.text}
+            {notice.retry && (
+              <button type="button" className={styles.retry} onClick={notice.retry}>
+                Réessayer
+              </button>
+            )}
           </p>
         )}
       </div>

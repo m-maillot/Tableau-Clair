@@ -1,4 +1,10 @@
-import type { Board, CreateElementInput, Element, Row } from '@tableau-clair/contracts';
+import {
+  elementSchema,
+  type Board,
+  type CreateElementInput,
+  type Element,
+  type Row,
+} from '@tableau-clair/contracts';
 import {
   moveElement,
   moveToRow as moveBetweenRows,
@@ -36,6 +42,14 @@ import {
 export interface Notice {
   tone: 'info' | 'error';
   text: string;
+  /** Relance l'action échouée (échec d'enregistrement : aucune perte silencieuse). */
+  retry?: () => void;
+}
+
+/** Déplacement refusé parce que l'élément a changé ailleurs : il attend une décision. */
+export interface RailConflict {
+  saved: Element;
+  mine: Place;
 }
 
 const NOTICE_MS = 5000;
@@ -129,6 +143,8 @@ export function useRailActions(boardId: string) {
   const historyRef = useRef<History>(EMPTY_HISTORY);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [refusedId, setRefusedId] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<RailConflict | null>(null);
+  const conflictRef = useRef<RailConflict | null>(null);
   const [busy, setBusy] = useState(false);
   const pending = useRef(0);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
@@ -144,7 +160,8 @@ export function useRailActions(boardId: string) {
   // Les messages disparaissent seuls.
   useEffect(() => {
     if (!notice) return;
-    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
+    // Un message avec « Réessayer » reste assez longtemps pour être utilisé.
+    const timer = setTimeout(() => setNotice(null), notice.retry ? NOTICE_MS * 2 : NOTICE_MS);
     return () => clearTimeout(timer);
   }, [notice]);
 
@@ -217,8 +234,22 @@ export function useRailActions(boardId: string) {
       return true;
     } catch (error) {
       const current = getBoard();
+      if (error instanceof ApiResponseError && error.status === 409) {
+        // Modifié ailleurs : on affiche la version enregistrée et on laisse choisir.
+        const saved = elementSchema.safeParse(error.details);
+        if (saved.success && current) {
+          setBoard(putElement(current, saved.data));
+          const next = { saved: saved.data, mine: to };
+          conflictRef.current = next;
+          setConflict(next);
+          return false;
+        }
+      }
       if (current) setBoard(putElement(current, original));
-      setNotice(failureNotice(error));
+      setNotice({
+        ...failureNotice(error),
+        retry: () => void enqueue(async () => void (await applyMove(elementId, to))),
+      });
       return false;
     }
   }
@@ -474,7 +505,40 @@ export function useRailActions(boardId: string) {
       }
     });
 
+  /** « Garder ma version » : renvoie le déplacement avec la version enregistrée. */
+  const keepConflict = () => {
+    const pending = conflictRef.current;
+    conflictRef.current = null;
+    setConflict(null);
+    if (!pending) return Promise.resolve();
+    return enqueue(async () => {
+      const { saved, mine } = pending;
+      const before: Place = { rowId: saved.rowId, position: saved.position };
+      if (await applyMove(saved.id, mine)) {
+        commit(
+          record(historyRef.current, {
+            kind: 'move',
+            elementId: saved.id,
+            before,
+            after: mine,
+            label: `Déplacement de « ${saved.label} »`,
+          }),
+        );
+        setNotice({ tone: 'info', text: `« ${saved.label} » : votre version a été enregistrée.` });
+      }
+    });
+  };
+
+  /** « Recharger » / « Décider plus tard » : la version enregistrée reste affichée. */
+  const dismissConflict = () => {
+    conflictRef.current = null;
+    setConflict(null);
+  };
+
   return {
+    conflict,
+    keepConflict,
+    dismissConflict,
     move,
     moveTo,
     changeRow,

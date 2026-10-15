@@ -4,6 +4,8 @@ import { greetingName } from '../home/format';
 import { useProperties, useSelectedProperty } from '../home/queries';
 import { useReviewCount } from '../review/useReviewCount';
 import { DESKTOP_QUERY, TabBar, useMediaQuery, type TabItem } from '../ui';
+import { OfflineBanner } from './OfflineBanner';
+import { UnsavedBanner } from './UnsavedBanner';
 import { SidebarNav } from './SidebarNav';
 import styles from './AppShell.module.css';
 
@@ -29,6 +31,8 @@ export function AppShell() {
 
   return (
     <>
+      <OfflineBanner />
+      <UnsavedBanner />
       <Outlet />
       <TabBar
         items={TABS}
@@ -60,6 +64,8 @@ function DesktopShell({ current }: { current: string }) {
         account={account}
       />
       <div className={styles.content}>
+        <OfflineBanner />
+        <UnsavedBanner />
         <Outlet />
       </div>
     </div>

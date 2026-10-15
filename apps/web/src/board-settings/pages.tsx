@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router';
 import { useBoard, useBoards, useProperties, useSelectedProperty } from '../home/queries';
 import { BoardCard } from '../home/BoardCard';
-import { Button } from '../ui';
+import { Button, EmptyState, ErrorState, LoadingState } from '../ui';
 import { BoardForm } from './BoardForm';
 import styles from './pages.module.css';
 
@@ -101,22 +101,27 @@ export function BoardsPage() {
       {property && <p className={styles.subtitle}>{property.name}</p>}
 
       {boards.isError && (
-        <p role="alert" className={styles.status}>
-          Impossible de charger les tableaux.
-        </p>
+        <ErrorState
+          title="Impossible de charger les tableaux."
+          text="Vérifiez votre connexion, puis réessayez."
+          onRetry={() => void boards.refetch()}
+        />
       )}
       {(properties.isPending || boards.isPending) && !boards.isError && (
-        <p role="status" className={styles.status}>
-          Chargement…
-        </p>
+        <LoadingState label="Chargement…" rows={3} />
       )}
       {boards.data && boards.data.length === 0 && (
-        <div className={styles.empty}>
-          <p>Aucun tableau pour l'instant.</p>
-          <Link to="/tableaux/nouveau">
-            <Button>Ajouter un tableau</Button>
-          </Link>
-        </div>
+        <EmptyState
+          icon="boards"
+          tone="invite"
+          title="Aucun tableau pour l'instant."
+          text="Décrivez votre tableau électrique, rangée par rangée."
+          action={
+            <Link to="/tableaux/nouveau">
+              <Button>Ajouter un tableau</Button>
+            </Link>
+          }
+        />
       )}
       {boards.data && boards.data.length > 0 && (
         <ul className={styles.list}>

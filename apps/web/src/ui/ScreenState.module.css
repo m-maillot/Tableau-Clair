@@ -1,0 +1,93 @@
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+.bar {
+  border-radius: 14px;
+  background: var(--color-surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.title {
+  width: 55%;
+  height: 28px;
+}
+.block {
+  height: 96px;
+  border-radius: 22px;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
+}
+
+.error {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1.5px solid var(--color-danger);
+  border-radius: 18px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-fg);
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.heading {
+  font-size: 15px;
+  font-weight: 800;
+}
+.text {
+  font-size: 14px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 16px;
+  text-align: center;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+.invite {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+.neutral {
+  background: var(--color-bg-soft);
+  color: var(--color-ink);
+}
+.done {
+  background: var(--color-status-verified-bg);
+  color: var(--color-status-verified-fg);
+}
+.empty .text {
+  color: var(--color-muted);
+}

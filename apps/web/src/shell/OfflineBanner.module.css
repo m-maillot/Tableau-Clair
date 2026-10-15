@@ -1,0 +1,20 @@
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--color-ink);
+  color: var(--color-white);
+  font-size: 13px;
+}
+.banner svg {
+  flex: none;
+  color: var(--color-lime);
+}
+.sub {
+  display: block;
+  opacity: 0.85;
+}

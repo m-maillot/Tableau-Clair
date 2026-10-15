@@ -244,6 +244,23 @@ describe('écran À vérifier', () => {
     expect(screen.getAllByRole('button', { name: 'Voir sur le plan' }).length).toBeGreaterThan(0);
   });
 
+  it('retire les actions d’édition hors ligne', async () => {
+    createServer();
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+    try {
+      renderReview();
+      await screen.findByText('Prise four');
+      expect(screen.queryByRole('button', { name: 'Confirmer' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Choisir un disjoncteur' }),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: 'Voir sur le plan' }).length).toBeGreaterThan(0);
+      expect(screen.getByText('Hors ligne · lecture seule')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+    }
+  });
+
   it('félicite quand tout est vérifié', async () => {
     createServer('owner', true);
     renderReview();

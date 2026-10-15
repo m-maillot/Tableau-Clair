@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { fetchMe, signOut as signOutRequest } from '../api/client';
+import { SESSION_EXPIRED_EVENT } from '../net/unsaved';
 
 export type SessionState =
   | { status: 'loading' }
@@ -45,6 +46,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Une réponse 401 en cours d'usage : la session n'existe plus, retour à la connexion.
+  useEffect(() => {
+    const onExpired = () => setSession({ status: 'anonymous' });
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, []);
 
   const value = useMemo(() => ({ session, refresh, signOut }), [session, refresh, signOut]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

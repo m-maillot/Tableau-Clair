@@ -45,6 +45,9 @@ import {
   type SearchResult,
 } from '@tableau-clair/contracts';
 import { z } from 'zod';
+import { clearSynced, markSynced } from '../net/status';
+import { clearOfflineData } from '../pwa/pwa';
+import { flagExpired, saveUnsaved, SESSION_EXPIRED_EVENT } from '../net/unsaved';
 
 /** Le serveur n'a pas pu être joint (réseau coupé, serveur arrêté). */
 export class NetworkError extends Error {
@@ -66,8 +69,9 @@ export class ApiResponseError extends Error {
 
 /** `fetch` same-origin avec session : traduit les échecs en erreurs typées. */
 async function request(path: string, init: RequestInit = {}): Promise<Response> {
+  let response: Response;
   try {
-    return await fetch(path, {
+    response = await fetch(path, {
       credentials: 'same-origin',
       ...init,
       headers: { 'content-type': 'application/json', ...init.headers },
@@ -75,6 +79,26 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   } catch (error) {
     throw new NetworkError(error);
   }
+  // Session expirée en cours de route : la modification est gardée sur l'appareil, l'écran de
+  // connexion est proposé (les appels d'authentification et /api/me gèrent leur propre 401).
+  if (
+    response.status === 401 &&
+    path.startsWith('/api/') &&
+    !path.startsWith('/api/auth') &&
+    path !== '/api/me'
+  ) {
+    const method = init.method ?? 'GET';
+    if (method !== 'GET') {
+      saveUnsaved({ method, path, body: typeof init.body === 'string' ? init.body : null });
+    }
+    flagExpired();
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  }
+  // Une lecture réussie depuis le serveur (pas depuis le cache hors ligne) date l'état affiché.
+  if (response.ok && (init.method ?? 'GET') === 'GET' && !response.headers.has('x-from-cache')) {
+    markSynced();
+  }
+  return response;
 }
 
 async function failure(response: Response): Promise<ApiResponseError> {
@@ -115,6 +139,8 @@ export async function startGoogleSignIn(): Promise<string> {
 export async function signOut(): Promise<void> {
   const response = await request('/api/auth/sign-out', { method: 'POST', body: '{}' });
   if (!response.ok) throw await failure(response);
+  clearOfflineData();
+  clearSynced();
 }
 
 // --- Logements, tableaux, vue d'ensemble, recherche ----------------------------------------------------
@@ -323,4 +349,6 @@ export async function deleteAccount(confirm: string): Promise<void> {
     body: JSON.stringify({ confirm }),
   });
   if (!response.ok) throw await failure(response);
+  clearOfflineData();
+  clearSynced();
 }

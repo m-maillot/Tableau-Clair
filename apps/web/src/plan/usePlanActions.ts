@@ -1,13 +1,16 @@
-import type {
-  CreateFixtureInput,
-  CreateRoomInput,
-  Fixture,
-  Floor,
-  Plan,
-  Room,
-  UpdateFixtureInput,
-  UpdateFloorInput,
-  UpdateRoomInput,
+import {
+  fixtureSchema,
+  floorSchema,
+  roomSchema,
+  type CreateFixtureInput,
+  type CreateRoomInput,
+  type Fixture,
+  type Floor,
+  type Plan,
+  type Room,
+  type UpdateFixtureInput,
+  type UpdateFloorInput,
+  type UpdateRoomInput,
 } from '@tableau-clair/contracts';
 import type { Verification } from '@tableau-clair/domain';
 import { useQueryClient } from '@tanstack/react-query';
@@ -28,6 +31,8 @@ import {
   updateFloor,
   updateRoom,
 } from '../api/client';
+import type { Conflict } from '../conflict/ConflictSheet';
+import { compareFields } from '../conflict/compare';
 import { keys } from '../home/queries';
 import {
   addFloor,
@@ -46,6 +51,8 @@ import {
 export interface Notice {
   tone: 'info' | 'error';
   text: string;
+  /** Relance l'action échouée (aucune perte silencieuse). */
+  retry?: () => void;
 }
 
 const NOTICE_MS = 5000;
@@ -94,6 +101,8 @@ interface Call<T> {
   reconcile?: (plan: Plan, result: T) => Plan;
   /** Relire tout le plan ensuite (le serveur a modifié autre chose que ce qu'on envoie). */
   refetch?: boolean;
+  /** Conflit de version : retourne vrai si l'appelant l'a pris en charge (feuille de conflit). */
+  onConflict?: (saved: unknown) => boolean;
 }
 
 /**
@@ -104,6 +113,7 @@ export function usePlanActions(propertyId: string) {
   const client = useQueryClient();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [busy, setBusy] = useState(false);
+  const [conflict, setConflict] = useState<Conflict | null>(null);
   const pending = useRef(0);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
 
@@ -112,7 +122,7 @@ export function usePlanActions(propertyId: string) {
 
   useEffect(() => {
     if (!notice) return;
-    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
+    const timer = setTimeout(() => setNotice(null), notice.retry ? NOTICE_MS * 2 : NOTICE_MS);
     return () => clearTimeout(timer);
   }, [notice]);
 
@@ -130,7 +140,14 @@ export function usePlanActions(propertyId: string) {
         return result;
       } catch (error) {
         if (before) setPlan(before);
-        setNotice(failureNotice(error));
+        if (
+          error instanceof ApiResponseError &&
+          error.status === 409 &&
+          call.onConflict?.(error.details)
+        ) {
+          return null;
+        }
+        setNotice({ ...failureNotice(error), retry: () => void run(call) });
         if (error instanceof ApiResponseError && error.status === 409) {
           void client.invalidateQueries({ queryKey: keys.plan(propertyId) });
         }
@@ -163,9 +180,17 @@ export function usePlanActions(propertyId: string) {
     return plan ? findFixture(plan, id)?.fixture : undefined;
   };
 
-  return {
+  const later = () => setConflict(null);
+  const decide = (apply: () => void) => () => {
+    setConflict(null);
+    apply();
+  };
+
+  const actions = {
     notice,
     busy,
+    conflict,
+    dismissConflict: later,
     say: (text: string) => setNotice({ tone: 'info', text }),
     refuse: (text: string) => setNotice({ tone: 'error', text }),
 
@@ -187,6 +212,21 @@ export function usePlanActions(propertyId: string) {
         reconcile: (plan, floor) => patchFloor(plan, floor),
         // Remplacer l'image supprime l'ancienne photo côté serveur : le plan relu garde le cadrage exact.
         refetch: 'backgroundImageId' in change,
+        onConflict: (details) => {
+          const saved = floorSchema.safeParse(details);
+          if (!saved.success) return false;
+          const current = getPlan();
+          if (current) setPlan(patchFloor(current, saved.data));
+          setConflict({
+            subject: saved.data.name,
+            savedVersion: saved.data.version,
+            savedAt: saved.data.updatedAt,
+            rows: compareFields(change, saved.data),
+            keep: decide(() => void actions.updateFloor(floorId, change)),
+            reload: later,
+          });
+          return true;
+        },
       }),
 
     reorder: (ids: string[]) =>
@@ -220,6 +260,21 @@ export function usePlanActions(propertyId: string) {
         reconcile: (plan, room) => putRoom(plan, room),
         // Le serveur déplace ou ramène les équipements de la pièce : on relit leurs positions.
         refetch: 'x' in change || 'y' in change || 'w' in change || 'h' in change,
+        onConflict: (details) => {
+          const saved = roomSchema.safeParse(details);
+          if (!saved.success) return false;
+          const current = getPlan();
+          if (current) setPlan(putRoom(current, saved.data));
+          setConflict({
+            subject: saved.data.name,
+            savedVersion: saved.data.version,
+            savedAt: saved.data.updatedAt,
+            rows: compareFields(change, saved.data),
+            keep: decide(() => void actions.updateRoom(roomId, change)),
+            reload: later,
+          });
+          return true;
+        },
       }),
 
     removeRoom: (roomId: string) =>
@@ -251,6 +306,21 @@ export function usePlanActions(propertyId: string) {
         request: () =>
           updateFixture(fixtureId, { ...change, version: latestFixture(fixtureId)?.version ?? 1 }),
         reconcile: (plan, fixture) => putFixture(plan, fixture),
+        onConflict: (details) => {
+          const saved = fixtureSchema.safeParse(details);
+          if (!saved.success) return false;
+          const current = getPlan();
+          if (current) setPlan(putFixture(current, saved.data));
+          setConflict({
+            subject: saved.data.label,
+            savedVersion: saved.data.version,
+            savedAt: saved.data.updatedAt,
+            rows: compareFields(change, saved.data),
+            keep: decide(() => void actions.updateFixture(fixtureId, change)),
+            reload: later,
+          });
+          return true;
+        },
       }),
 
     /** Relie l'équipement à un disjoncteur (ou change le statut de sa liaison). */
@@ -275,4 +345,5 @@ export function usePlanActions(propertyId: string) {
         request: () => deleteFixture(fixtureId),
       }),
   };
+  return actions;
 }

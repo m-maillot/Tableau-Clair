@@ -271,3 +271,20 @@ L'éditeur de rail s'adapte à la largeur (`useMediaQuery`, `DESKTOP_QUERY`) :
 - **Suppression** : l'adresse e-mail doit être retapée. Les logements dont la personne est la seule
   propriétaire sont supprimés avec leurs photos (base et S3) ; les autres logements sont conservés
   sans elle. Sessions, comptes liés, modèles personnalisés et jetons en attente partent avec.
+
+### Conflits, états et hors ligne
+
+- **Conflit d'édition** (`409`, `version` différente) : une feuille compare ma valeur et la version
+  enregistrée champ par champ, sans fusion. « Garder ma version » renvoie avec la version enregistrée,
+  « Recharger » l'abandonne, « Décider plus tard » ferme en laissant la version enregistrée affichée.
+  Câblé sur le déplacement des appareils (rail) et sur la modification des équipements, pièces et étages.
+- **États** : squelettes (`role="status"`, désactivés par `prefers-reduced-motion`), états vides à gabarit
+  unique et erreurs avec « Réessayer » + sortie (`apps/web/src/ui/ScreenState.tsx`).
+- **Échec d'enregistrement** : notification avec « Réessayer » ; l'état précédent est rétabli.
+- **Session expirée** : la modification refusée (401) est gardée dans `localStorage`, la connexion est
+  proposée, puis un bandeau offre de **réappliquer** ou d'ignorer (les versions périmées restent signalées).
+- **PWA** : `public/manifest.webmanifest`, icônes, `public/sw.js` (coquille, ressources, **dernières
+  lectures d'API**), invite d'installation (astuce iPhone) et bannière « Nouvelle version disponible ».
+  Le service worker n'est enregistré qu'en production. Hors ligne : bandeau « lecture seule » avec
+  l'heure du dernier état, actions d'édition retirées. La déconnexion et la suppression du compte
+  vident les données gardées pour la lecture hors ligne.

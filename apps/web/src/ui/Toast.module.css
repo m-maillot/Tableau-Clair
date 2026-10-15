@@ -20,3 +20,15 @@
 .error {
   background: var(--color-danger);
 }
+
+.action {
+  margin-left: 12px;
+  padding: 4px 12px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  pointer-events: auto;
+}

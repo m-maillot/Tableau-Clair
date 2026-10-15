@@ -10,9 +10,11 @@ import {
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { plural } from '../home/format';
+import { ConflictSheet } from '../conflict/ConflictSheet';
 import { BreakerPickerSheet } from '../link/BreakerPickerSheet';
 import { usePlan, useProperties, useSelectedProperty } from '../home/queries';
-import { Button, Icon, IconButton, Toast } from '../ui';
+import { useCanWrite } from '../net/status';
+import { Button, ErrorState, Icon, IconButton, LoadingState, Toast } from '../ui';
 import { FIXTURE_KIND_ICON, defaultFixtureLabel } from './fixture-kinds';
 import { FloorTabs } from './FloorTabs';
 import styles from './PlanPage.module.css';
@@ -61,7 +63,8 @@ export function PlanPage() {
   const [drawn, setDrawn] = useState<Rect | null>(null);
   const [ghost, setGhost] = useState<Ghost | null>(null);
 
-  const canEdit = property?.role !== 'viewer';
+  const online = useCanWrite();
+  const canEdit = property?.role !== 'viewer' && online;
   const floors = useMemo(() => plan.data?.floors ?? [], [plan.data]);
   const floor: PlanFloor | undefined = floors.find((f) => f.id === floorId) ?? floors[0];
   const breakers = plan.data?.breakers ?? [];
@@ -177,9 +180,7 @@ export function PlanPage() {
   if (properties.isPending || (propertyId && plan.isPending)) {
     return (
       <main className={styles.page}>
-        <p role="status" className={styles.status}>
-          Chargement…
-        </p>
+        <LoadingState label="Chargement…" rows={3} />
       </main>
     );
   }
@@ -195,10 +196,11 @@ export function PlanPage() {
     return (
       <main className={styles.page}>
         <h1 className={styles.title}>Plan</h1>
-        <p role="alert" className={styles.status}>
-          Impossible de charger le plan.
-        </p>
-        <Button onClick={() => void plan.refetch()}>Réessayer</Button>
+        <ErrorState
+          title="Impossible de charger le plan."
+          text="Vérifiez votre connexion, puis réessayez."
+          onRetry={() => void plan.refetch()}
+        />
       </main>
     );
   }
@@ -218,7 +220,16 @@ export function PlanPage() {
 
   return (
     <main className={styles.page}>
-      {actions.notice && <Toast tone={actions.notice.tone}>{actions.notice.text}</Toast>}
+      {actions.notice && (
+        <Toast
+          tone={actions.notice.tone}
+          action={
+            actions.notice.retry ? { label: 'Réessayer', onClick: actions.notice.retry } : undefined
+          }
+        >
+          {actions.notice.text}
+        </Toast>
+      )}
 
       <header className={styles.header}>
         <h1 className={styles.title}>Plan</h1>
@@ -361,6 +372,12 @@ export function PlanPage() {
           </ul>
         </>
       )}
+
+      <ConflictSheet
+        conflict={actions.conflict}
+        busy={actions.busy}
+        onLater={actions.dismissConflict}
+      />
 
       {/* --- Feuilles ---------------------------------------------------------------------------------- */}
       <FixtureSheet

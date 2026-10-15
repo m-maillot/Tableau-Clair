@@ -8,7 +8,8 @@ import { BreakerPickerSheet } from '../link/BreakerPickerSheet';
 import { JustCutSheet } from '../link/CircuitSection';
 import { breakerName, placeOf } from '../link/place';
 import { useLinkMutations } from '../link/useLinkMutations';
-import { Button, StatusChip, TypeChip } from '../ui';
+import { useCanWrite } from '../net/status';
+import { Button, EmptyState, ErrorState, LoadingState, StatusChip, TypeChip } from '../ui';
 import styles from './review.module.css';
 
 type Filter = 'all' | 'assumed' | 'unlinked';
@@ -34,7 +35,8 @@ export function ReviewPage() {
   const [filter, setFilter] = useState<Filter>('all');
   const [choosing, setChoosing] = useState<string | null>(null);
   const [cutting, setCutting] = useState<PlanBreaker | null>(null);
-  const canEdit = property?.role !== 'viewer';
+  const online = useCanWrite();
+  const canEdit = property?.role !== 'viewer' && online;
 
   const data = useMemo(() => {
     const floors = plan.data?.floors ?? [];
@@ -67,9 +69,7 @@ export function ReviewPage() {
     return (
       <main className={styles.page}>
         <h1 className={styles.title}>À vérifier</h1>
-        <p role="status" className={styles.empty}>
-          Chargement…
-        </p>
+        <LoadingState label="Chargement…" rows={3} />
       </main>
     );
   }
@@ -77,9 +77,11 @@ export function ReviewPage() {
     return (
       <main className={styles.page}>
         <h1 className={styles.title}>À vérifier</h1>
-        <p role="alert" className={styles.empty}>
-          Impossible de charger les liaisons. Réessayez.
-        </p>
+        <ErrorState
+          title="Impossible de charger les liaisons."
+          text="Vérifiez votre connexion, puis réessayez."
+          onRetry={() => void plan.refetch()}
+        />
       </main>
     );
   }
@@ -135,7 +137,14 @@ export function ReviewPage() {
         ))}
       </div>
 
-      {nothing && <p className={styles.empty}>Tout est vérifié : rien à signaler.</p>}
+      {nothing && (
+        <EmptyState
+          icon="check"
+          tone="done"
+          title="Tout est vérifié : rien à signaler."
+          text="Les nouveaux équipements ou liaisons apparaîtront ici."
+        />
+      )}
 
       <ul className={styles.cards} aria-label="Éléments à vérifier">
         {showAssumed &&

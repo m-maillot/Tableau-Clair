@@ -9,6 +9,7 @@ import { PlanPage } from './plan/PlanPage';
 import { EditorPage } from './rail/EditorPage';
 import { AppShell } from './shell/AppShell';
 import { AccountPage } from './account/AccountPage';
+import { PwaPrompts } from './pwa/PwaPrompts';
 import { ReviewPage } from './review/ReviewPage';
 import { Button } from './ui';
 
@@ -63,13 +64,18 @@ export function AppRoutes() {
 export function App() {
   // Un écran qui retente sans fin n'aide pas : une nouvelle tentative suffit pour un incident réseau bref.
   const [client] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 15_000 } } }),
+    () =>
+      new QueryClient({
+        // `always` : hors ligne, les lectures passent par le service worker (dernier état connu).
+        defaultOptions: { queries: { retry: 1, staleTime: 15_000, networkMode: 'always' } },
+      }),
   );
   return (
     <QueryClientProvider client={client}>
       <BrowserRouter>
         <SessionProvider>
           <AppRoutes />
+          <PwaPrompts />
         </SessionProvider>
       </BrowserRouter>
     </QueryClientProvider>

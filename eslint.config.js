@@ -15,6 +15,11 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
   {
+    // Service worker : portée `self` et API Cache, pas celle d'une page.
+    files: ['apps/web/public/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
     files: ['apps/api/**/*.ts', 'packages/**/*.ts', '*.js'],
     languageOptions: { globals: globals.node },
   },

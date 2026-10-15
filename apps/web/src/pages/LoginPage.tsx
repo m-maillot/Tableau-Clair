@@ -4,6 +4,7 @@ import { navigateExternal } from '../api/browser';
 import { ApiResponseError, NetworkError, requestMagicLink, startGoogleSignIn } from '../api/client';
 import { problemFromCode } from '../auth/login-errors';
 import { useSession } from '../auth/session';
+import { consumeExpired } from '../net/unsaved';
 import { Button, Icon, TextField } from '../ui';
 import styles from './LoginPage.module.css';
 
@@ -50,6 +51,8 @@ export function LoginPage() {
   const [failure, setFailure] = useState<Failure>();
   const [googleBusy, setGoogleBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  // Lu une seule fois : le drapeau est consommé à l'affichage de la connexion.
+  const [expired] = useState(() => consumeExpired());
   const sentHeading = useRef<HTMLHeadingElement>(null);
 
   const returnedProblem = problemFromCode(params.get('error'));
@@ -161,6 +164,19 @@ export function LoginPage() {
             <p className={styles.help}>
               Pas de mot de passe : un lien arrive dans votre boîte mail.
             </p>
+
+            {expired && (
+              <div role="status" className={styles.problem}>
+                <Icon name="warning" size={20} />
+                <div>
+                  <strong>Votre session a expiré</strong>
+                  <p>
+                    Reconnectez-vous : vos modifications non enregistrées sont conservées sur cet
+                    appareil et vous seront proposées.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {problem && (
               <div role="alert" className={styles.problem}>

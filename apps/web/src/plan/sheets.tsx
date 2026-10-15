@@ -80,7 +80,13 @@ function CommitField({
   onCommit: (value: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
+  // Quand la valeur enregistrée change (conflit, rechargement), le brouillon la rejoint tout de
+  // suite, avant tout effet : un blur ne doit jamais renvoyer l'ancien texte par-dessus.
+  const [synced, setSynced] = useState(value);
+  if (value !== synced) {
+    setSynced(value);
+    setDraft(value);
+  }
   const commit = () => {
     const next = draft.trim();
     if (next && next !== value) onCommit(next);

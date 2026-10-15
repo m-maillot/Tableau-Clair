@@ -1,6 +1,6 @@
 # Tableau Clair — Récapitulatif design (handoff)
 
-Maquettes : https://claude.ai/artifact/XCVWg2AM1MRKCnHLmdte8A (canevas Design, 11 écrans).
+Maquettes : https://claude.ai/artifact/XCVWg2AM1MRKCnHLmdte8A (canevas Design, 17 écrans).
 Référence fonctionnelle : la spec v1.0 (§ cités ci-dessous). Ce document décrit **ce que montrent les maquettes** pour servir de base au découpage en issues et au développement du front (React + Vite, éditeur en SVG/DOM).
 
 > Les maquettes sont statiques : les interactions décrites en « Comportement » sont l'intention, pas encore prototypée.
@@ -109,6 +109,26 @@ Sidebar sombre, barre d'outils (recherche, annuler/rétablir, « Imprimer le ré
 ### 3.10 Supprimer le tableau (`TableauSuppr`) (§7.1, §5)
 Feuille basse : titre « Supprimer « nom » ? », listes « supprimé » / « conservé », lien d'export JSON, champ de confirmation par saisie du nom, bouton danger désactivé tant que le nom ne correspond pas, Annuler.
 
+### 3.11 Conflit d'édition (`Conflit`) (§7.2)
+Feuille basse : « Cet élément a été modifié entre-temps », version enregistrée (auteur, heure, n°) contre version locale, tableau champ par champ pour les seuls champs en désaccord (bordure sombre = ma valeur, claire = enregistrée). Actions : **Garder ma version** (primaire, écrase), **Recharger la version enregistrée** (secondaire, abandonne), Décider plus tard. Chaque action est accompagnée de sa conséquence en une ligne. Pas de fusion automatique.
+
+### 3.12 Hors ligne (`HorsLigne`) (§10)
+Bandeau sombre en tête (icône hors-ligne lime, « Hors ligne · lecture seule », heure du dernier état). Contenu identique à l'écran en ligne mais sans actions d'édition (feuille de détail remplacée par un message explicatif). Barre d'onglets conservée.
+
+### 3.13 Chargement (`Chargement`)
+Squelettes à la forme du contenu (en-tête, rangées du rail), pulsation douce, `role="status"` + libellé « Chargement du tableau… ». Même principe pour les autres écrans.
+
+### 3.14 États vides (`Vides`)
+Gabarit unique : pastille d'icône (lime = invitation à agir, bleu clair = neutre, vert clair = « tout est fait »), titre, phrase, une action. Cas : aucun tableau, rangée vide, aucun étage, rien à vérifier, aucun résultat.
+
+### 3.15 États d'erreur (`Erreurs`)
+- Chargement échoué : carte danger `role="alert"` + Réessayer + retour accueil.
+- Échec d'enregistrement : notification passagère sombre + Réessayer (au-dessus de la barre d'onglets).
+- 403 / 404 / session expirée : carte neutre ou orange + action de sortie.
+
+### 3.16 Installation PWA (`PWA`) (§10)
+Feuille d'invitation (icône, avantages, Installer / Plus tard, astuce iPhone) et bannière « Nouvelle version disponible · Mettre à jour ». Manifeste et service worker (mise en cache du dernier état lu) à implémenter côté front.
+
 ## 4. Navigation
 
 ```
@@ -124,14 +144,12 @@ Barre d'onglets mobile : Accueil · Tableaux · Plan · À vérifier. Compte / e
 ## 5. Ce qui n'est pas encore dessiné
 
 - Suppression d'un disjoncteur avec équipements liés → confirmation « passent à inconnu » (§5).
-- Conflit d'édition concurrente (garder ma version / recharger) (§7.2).
 - Formulaire « Autre appareil » et enregistrement du modèle personnalisé (§7.3).
 - Fiche d'équipement sur le plan et liaison depuis l'équipement (§7.4).
 - Photos (tableau, élément, équipement) : prise, aperçu, URL signées (§9).
 - Lien lecture seule, QR, récapitulatif A4, avertissement avant création (§7.8, V1.1).
 - Membres, invitations, rôles (§7.7, V1.1).
 - Export JSON, suppression de compte, mention RGPD (§7.9).
-- États vide / chargement / erreur / hors-ligne (consultation du dernier état, §10).
 - Mode sombre (non décidé, §13).
 
 ## 6. Pistes de découpage en issues

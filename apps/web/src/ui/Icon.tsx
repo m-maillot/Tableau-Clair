@@ -105,6 +105,10 @@ const PATHS = {
     </>
   ),
   /** Éclair plein : disjoncteur. */
+  'wifi-off': (
+    <path d="M2 8.8a15 15 0 0120 0M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0M12 20h.01M3 3l18 18" />
+  ),
+  refresh: <path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" />,
   bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" strokeWidth={1.5} />,
 } satisfies Record<string, ReactNode>;
 

@@ -1,0 +1,19 @@
+.footer {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+}
+.list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.hint {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  font-size: 14px;
+}

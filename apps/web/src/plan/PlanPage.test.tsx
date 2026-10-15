@@ -344,6 +344,9 @@ function createServer(
     m = url.match(/^\/api\/fixtures\/([^/]+)$/);
     if (m && method === 'PATCH') {
       const fixture = state.fixtures.find((f) => f.id === m![1])!;
+      if (body!.version !== fixture.version) {
+        return json({ code: 'version_conflict', message: 'x', details: entity(fixture) }, 409);
+      }
       const change = { ...body! };
       delete change.version;
       Object.assign(fixture, change);
@@ -688,6 +691,59 @@ describe('liaison avec un disjoncteur', () => {
     const sheet = await screen.findByRole('region', { name: 'Chambre' });
     expect(sheet).toHaveTextContent('Aucun disjoncteur identifié');
     expect(sheet).toHaveTextContent('1 équipement à identifier');
+  });
+});
+
+describe('conflits d’édition', () => {
+  async function renameWhileStale(server: ReturnType<typeof createServer>) {
+    await userEvent.click(await screen.findByRole('button', { name: /Plafonnier/ }));
+    const sheet = await screen.findByRole('region', { name: 'Plafonnier' });
+    // Quelqu'un d'autre l'a renommé entre-temps.
+    const fixture = server.state.fixtures.find((f) => f.label === 'Plafonnier')!;
+    fixture.label = 'Spots';
+    fixture.version = 4;
+
+    const field = within(sheet).getByLabelText('Libellé');
+    await userEvent.clear(field);
+    await userEvent.type(field, 'Suspension{Enter}');
+    return screen.findByRole('dialog', { name: 'Cet élément a été modifié entre-temps' });
+  }
+
+  it('compare ma valeur et la version enregistrée', async () => {
+    const server = createServer();
+    renderPlan();
+    const dialog = await renameWhileStale(server);
+    const row = within(dialog).getByRole('row', { name: /Libellé/ });
+    expect(row).toHaveTextContent('Suspension');
+    expect(row).toHaveTextContent('Spots');
+    expect(dialog).toHaveAccessibleDescription(/version enregistrée n° 4/);
+  });
+
+  it('garde ma version : renvoie avec la version enregistrée', async () => {
+    const server = createServer();
+    renderPlan();
+    const dialog = await renameWhileStale(server);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Garder ma version' }));
+    await waitFor(() =>
+      expect(server.state.fixtures.find((f) => f.id === ID(502))!.label).toBe('Suspension'),
+    );
+    expect(server.writes().map((w) => w.body?.version)).toEqual([1, 4]);
+    expect(server.state.fixtures.find((f) => f.id === ID(502))!.label).toBe('Suspension');
+  });
+
+  it('recharge : la version enregistrée reste, rien n’est envoyé', async () => {
+    const server = createServer();
+    renderPlan();
+    const dialog = await renameWhileStale(server);
+    // Aucun renvoi automatique ne doit écraser la version enregistrée.
+    await new Promise((r) => setTimeout(r, 200));
+    const writes = server.writes().length;
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Recharger la version enregistrée' }),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(server.writes()).toHaveLength(writes);
+    expect(await screen.findByRole('button', { name: /Spots/ })).toBeInTheDocument();
   });
 });
 

@@ -441,6 +441,12 @@ Accessibilité : un statut n'est **jamais** porté par la couleur seule (couleur
 | **Éditeur (bureau)** | Sidebar sombre, barre d'outils (recherche, annuler/rétablir, imprimer), palette, rangées pleine largeur (24 colonnes), panneau de détail à droite. Fluide : sidebar et panneau passent sous le contenu en largeur étroite. | §7.2 |
 | **Paramètres du tableau** | Nom, emplacement, photo, steppers rangées / modules par rangée, notes ; occupation par rangée ; message de refus si réduction sous l'occupation ; actions Dupliquer et Supprimer ; barre fixe Annuler / Enregistrer. Version bureau : formulaire + aperçu de la réduction (zone hors rail hachurée), duplication (nom de la copie) et zone de suppression. | §7.1 |
 | **Supprimer le tableau** | Feuille de confirmation : ce qui est supprimé (rangées, éléments, photo), ce qui est conservé (équipements du plan, liaisons passées à « inconnue »), export JSON préalable, saisie du nom pour activer le bouton danger. | §7.1, §5 |
+| **Conflit d'édition** | Feuille « Cet élément a été modifié entre-temps » : versions (la vôtre / l'enregistrée), comparaison champ par champ, **Garder ma version** (remplace l'enregistrée), **Recharger la version enregistrée** (abandonne mes modifications), Décider plus tard. | §7.2 |
+| **Hors ligne** | Bandeau « Hors ligne · lecture seule » avec l'heure du dernier état chargé ; consultation du rail, aucune action d'édition. | §10 |
+| **Chargement** | Squelettes à la forme de l'écran (ex. rangées du rail), `role="status"`, animation désactivée si `prefers-reduced-motion`. | §10 |
+| **États vides** | Aucun tableau, rangée vide, aucun étage, rien à vérifier, aucun résultat de recherche : icône, message, une action. | §10 |
+| **États d'erreur** | Chargement échoué (Réessayer), échec d'enregistrement (notification passagère), 403, 404, session expirée. | §10 |
+| **Installation PWA** | Invite d'installation (avantages, astuce iPhone) et bannière « Nouvelle version disponible ». | §10 |
 
 Navigation : Connexion → Accueil ; Accueil → Tableaux → Éditeur → Paramètres du tableau → Supprimer ; Éditeur → (module libre → Ajout) | (élément → Fiche → Plan) ; Accueil → Plan ; Accueil → À vérifier → (Plan | Fiche). Barre d'onglets mobile : Accueil · Tableaux · Plan · À vérifier.
 
@@ -453,15 +459,17 @@ Navigation : Connexion → Accueil ; Accueil → Tableaux → Éditeur → Param
 - Réduire le nombre de modules par rangée **sous l'occupation maximale** d'une rangée est refusé : le stepper passe en erreur et un message cite la rangée et l'occupation (« Impossible de descendre sous 18 modules. La rangée 1 en occupe 18… »). Mêmes règles côté serveur (§5).
 - La **duplication** copie rangées et éléments, **pas** les liaisons avec les équipements (un équipement n'a qu'un seul disjoncteur) ; le nom proposé est « <nom> (copie) ».
 - La **suppression** ne supprime pas les équipements du plan : leurs liaisons passent à « inconnue » (§5). Elle exige la saisie du nom du tableau et propose l'export JSON ; le bouton reste désactivé tant que le nom ne correspond pas.
+- **Conflit d'édition** : détecté par `version` différente à l'enregistrement. Il n'y a pas de fusion : l'utilisateur garde sa version (écrase) ou recharge (abandonne). Aucune co-édition temps réel en V1.
+- **Hors ligne** : consultation du dernier état chargé en **lecture seule** ; les actions d'édition sont désactivées avec une explication, jamais masquées silencieusement.
+- **Session expirée** : les modifications non enregistrées sont conservées sur l'appareil jusqu'à la reconnexion.
+- Chaque écran a ses états vide, chargement et erreur ; les erreurs disent ce qui s'est passé, rassurent sur les données et proposent une sortie.
 
 ### 15.6 Reste à dessiner
 
 - Suppression d'un disjoncteur avec équipements liés : confirmation « passent à inconnu » (§5).
-- Conflit d'édition concurrente : garder ma version / recharger (§7.2).
 - Formulaire « Autre appareil » et enregistrement du modèle personnalisé (§7.3).
 - Fiche d'équipement sur le plan et liaison depuis l'équipement (§7.4) ; réglage de l'image de fond (opacité, verrouillage), dessin et redimensionnement des pièces, palette d'équipements.
 - Photos : prise, aperçu (§9).
 - Compte, export JSON, suppression de compte, mention RGPD (§7.9).
-- États vide, chargement, erreur, hors-ligne ; états de la connexion (lien envoyé, refus, erreur réseau).
 - V1.1 : lien lecture seule, QR, récapitulatif A4 (§7.8), membres et invitations (§7.7).
 - Mode sombre (non décidé).
