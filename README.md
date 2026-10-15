@@ -192,15 +192,16 @@ une URL signée valable 5 minutes, utilisable directement dans une balise `<img>
 
 ## Écrans et routes
 
-| Route                      | Écran                                                                    | Accès                                                |
-| -------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------- |
-| `/connexion`               | Connexion (lien magique, Google)                                         | public ; redirige vers `/` si connecté               |
-| `/`                        | Accueil : logement, fiabilité du repérage, tableaux, recherche           | session requise, sinon redirection vers `/connexion` |
-| `/tableaux`                | Liste des tableaux du logement actif                                     | session requise                                      |
-| `/tableaux/nouveau`        | Création d'un tableau (nom, emplacement, photo, rangées, modules, notes) | session requise                                      |
-| `/tableaux/:id`            | Tableau (l'éditeur de rail arrive avec un ticket suivant)                | session requise                                      |
-| `/tableaux/:id/parametres` | Paramètres : modification, duplication, suppression                      | session requise                                      |
-| `/plan`, `/verifier`       | Écrans à venir (page « arrive bientôt »)                                 | session requise                                      |
+| Route                      | Écran                                                                              | Accès                                                |
+| -------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `/connexion`               | Connexion (lien magique, Google)                                                   | public ; redirige vers `/` si connecté               |
+| `/`                        | Accueil : logement, fiabilité du repérage, tableaux, recherche                     | session requise, sinon redirection vers `/connexion` |
+| `/tableaux`                | Liste des tableaux du logement actif                                               | session requise                                      |
+| `/tableaux/nouveau`        | Création d'un tableau (nom, emplacement, photo, rangées, modules, notes)           | session requise                                      |
+| `/tableaux/:id`            | Éditeur de rail : mobile (feuille de détail) et bureau (sidebar, palette, panneau) | session requise                                      |
+| `/tableaux/:id/parametres` | Paramètres : modification, duplication, suppression                                | session requise                                      |
+| `/plan`                    | Plan du logement par étage                                                         | session requise                                      |
+| `/verifier`                | À vérifier : liaisons supposées, équipements sans disjoncteur                      | session requise                                      |
 
 Le front parle à l'API en same-origin (`/api/*`, proxy Vite en dev) via `apps/web/src/api/client.ts`.
 Après une tentative échouée, le serveur renvoie sur `/connexion?error=…` (`INVALID_TOKEN`,
@@ -245,3 +246,15 @@ packages/
 
 Les paquets de `packages/` sont consommés en TypeScript source (pas d'étape de build) : le web les résout via Vite, l'API les embarque via tsup.
 Ils s'importent sous `@tableau-clair/<nom>`.
+
+### Mode bureau (≥ 1024 px)
+
+L'éditeur de rail s'adapte à la largeur (`useMediaQuery`, `DESKTOP_QUERY`) :
+
+- **Sidebar** sombre à la place de la barre d'onglets, avec le badge « À vérifier » (liaisons à confirmer).
+- **Barre d'outils** : recherche dans le tableau (Entrée sélectionne le premier résultat), annuler / rétablir.
+- **Palette « Ajouter sur le rail »** : glisser un type sur un module libre, ou le choisir puis cliquer.
+- **Glisser-déposer** d'un appareil sur un module libre (même rangée ou autre) ; refus avec message
+  si l'emplacement ne convient pas, annulable comme les autres déplacements.
+- **Rangées pleine largeur** (modules en `1fr`) et **panneau de détail à droite** ; sous 1280 px le
+  panneau passe sous le contenu. Sous 1024 px, l'éditeur mobile (feuille basse, ← →) est inchangé.

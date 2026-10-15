@@ -67,3 +67,64 @@
 .noticeError {
   background: var(--color-danger);
 }
+
+/* --- Mode bureau --------------------------------------------------------------------------------- */
+.desktop {
+  max-width: 1500px;
+  padding: 24px 32px 48px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 8px 12px;
+  border-radius: 18px;
+  background: var(--color-surface);
+}
+.search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--color-white);
+  color: var(--color-muted);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  outline: none;
+}
+.found {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+/* Rail et panneau côte à côte ; le panneau passe sous le contenu en largeur étroite. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+.layout .rows {
+  margin-top: 0;
+}
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@media (min-width: 1280px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}

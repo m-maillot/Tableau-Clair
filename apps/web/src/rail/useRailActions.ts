@@ -264,6 +264,34 @@ export function useRailActions(boardId: string) {
       }
     });
 
+  /** Glisser-déposer : place l'élément exactement sur le module visé, dans n'importe quelle rangée. */
+  const moveTo = (element: Element, rowId: string, position: number) =>
+    enqueue(async () => {
+      const board = getBoard();
+      const current = (board && findElement(board, element.id)?.element) || element;
+      const target = board?.rows.find((r) => r.id === rowId);
+      if (!board || !target) return;
+      if (current.rowId === rowId && current.position === position) return;
+
+      const before: Place = { rowId: current.rowId, position: current.position };
+      const after: Place = { rowId, position };
+      if (await applyMove(current.id, after)) {
+        commit(
+          record(historyRef.current, {
+            kind: 'move',
+            elementId: current.id,
+            before,
+            after,
+            label: `Déplacement de « ${current.label} »`,
+          }),
+        );
+        setNotice({
+          tone: 'info',
+          text: `« ${current.label} » : rangée ${target.index + 1}, ${moduleRange(position, current.width)}.`,
+        });
+      }
+    });
+
   /** Change de rangée en gardant la position la plus proche possible. */
   const changeRow = (element: Element, rowId: string) =>
     enqueue(async () => {
@@ -448,6 +476,7 @@ export function useRailActions(boardId: string) {
 
   return {
     move,
+    moveTo,
     changeRow,
     add,
     remove,

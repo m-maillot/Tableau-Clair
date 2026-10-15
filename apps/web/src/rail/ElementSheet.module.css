@@ -57,3 +57,38 @@
   cursor: progress;
   opacity: 0.55;
 }
+
+/* Panneau de détail du mode bureau : colonne collante à droite du rail. */
+.panel {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 32px);
+  padding: 16px;
+  overflow-y: auto;
+  border-radius: 22px;
+  background: var(--color-white);
+  box-shadow: var(--shadow-floating);
+}
+.panelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.panelTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+.panelSub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+.panelActions {
+  padding-top: 4px;
+}

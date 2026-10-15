@@ -1,0 +1,7 @@
+.layout {
+  --sidebar-width: 232px;
+  min-height: 100vh;
+}
+.content {
+  margin-left: var(--sidebar-width);
+}

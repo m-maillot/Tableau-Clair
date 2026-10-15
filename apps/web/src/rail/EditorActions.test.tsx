@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppRoutes } from '../App';
 import { SessionProvider } from '../auth/session';
 
@@ -938,5 +938,119 @@ describe('ajout d’un appareil', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(server.writes()).toHaveLength(0);
+  });
+});
+
+describe('mode bureau', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('min-width: 1024px'),
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })),
+    );
+  });
+
+  /** DataTransfer minimal : jsdom n'en fournit pas. */
+  const transfer = () => {
+    const store = new Map<string, string>();
+    return {
+      setData: (type: string, value: string) => void store.set(type, value),
+      getData: (type: string) => store.get(type) ?? '',
+      effectAllowed: 'all',
+      dropEffect: 'move',
+    };
+  };
+  const slot = (n: number) =>
+    screen.getByRole('button', { name: `Rangée 1, module libre ${n}, ajouter un appareil` });
+
+  it('affiche la sidebar avec le badge, la palette et la barre d’outils', async () => {
+    createServer();
+    renderEditor();
+    const nav = await screen.findByRole('navigation', { name: 'Navigation principale' });
+    expect(within(nav).getByRole('link', { name: /Tableaux/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(await within(nav).findByLabelText('1 à vérifier')).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: /Onglets|Navigation mobile/ })).toBeNull();
+
+    expect(screen.getByRole('region', { name: 'Ajouter sur le rail' })).toBeInTheDocument();
+    expect(screen.getByRole('toolbar', { name: 'Outils du tableau' })).toBeInTheDocument();
+  });
+
+  it('montre la fiche dans un panneau latéral, pas dans une feuille', async () => {
+    createServer();
+    renderEditor();
+    await select(/^Four/);
+    const panel = await screen.findByRole('region', { name: 'Four' });
+    expect(within(panel).getByRole('button', { name: 'Fermer' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('déplace un appareil par glisser-déposer sur un module libre', async () => {
+    const server = createServer();
+    renderEditor();
+    const plaques = await screen.findByRole('button', { name: /^Plaques/ });
+    const data = transfer();
+    fireEvent.dragStart(plaques, { dataTransfer: data });
+    fireEvent.dragOver(slot(5), { dataTransfer: data });
+    fireEvent.drop(slot(5), { dataTransfer: data });
+
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({ method: 'PATCH', body: { position: 4 } }),
+    );
+  });
+
+  it('ajoute un type de la palette déposé sur un module libre', async () => {
+    const server = createServer();
+    renderEditor();
+    const palette = await screen.findByRole('region', { name: 'Ajouter sur le rail' });
+    const chip = within(palette).getByRole('button', { name: /^Différentiel/ });
+    const data = transfer();
+    fireEvent.dragStart(chip, { dataTransfer: data });
+    fireEvent.drop(slot(9), { dataTransfer: data });
+
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'POST',
+        body: { position: 8, width: 2, kind: 'rcd', label: 'Différentiel' },
+      }),
+    );
+  });
+
+  it('arme un type de la palette puis l’ajoute d’un clic sur un module libre', async () => {
+    const server = createServer();
+    renderEditor();
+    const palette = await screen.findByRole('region', { name: 'Ajouter sur le rail' });
+    await userEvent.click(within(palette).getByRole('button', { name: /^Disjoncteur/ }));
+    await userEvent.click(slot(9));
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'POST',
+        body: { position: 8, width: 1, kind: 'breaker' },
+      }),
+    );
+  });
+
+  it('cherche dans le tableau et sélectionne le premier résultat', async () => {
+    createServer();
+    renderEditor();
+    const input = await screen.findByLabelText('Rechercher dans ce tableau');
+    await userEvent.type(input, 'plaq');
+    expect(await screen.findByText('1 appareil')).toBeInTheDocument();
+    await userEvent.type(input, '{Enter}');
+    expect(await screen.findByRole('region', { name: 'Plaques' })).toBeInTheDocument();
+  });
+
+  it('ne propose pas la palette à un lecteur', async () => {
+    createServer({ role: 'viewer' });
+    renderEditor();
+    await screen.findByRole('button', { name: /^Plaques/ });
+    expect(screen.queryByRole('region', { name: 'Ajouter sur le rail' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Annuler/ })).toBeNull();
   });
 });

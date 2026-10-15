@@ -1,7 +1,7 @@
 import type { Element } from '@tableau-clair/contracts';
 import { plural } from '../home/format';
 import { CircuitSection } from '../link/CircuitSection';
-import { BottomSheet, Icon } from '../ui';
+import { BottomSheet, Icon, IconButton } from '../ui';
 import { appearanceOf, moduleRange } from './appearance';
 import styles from './ElementSheet.module.css';
 
@@ -16,6 +16,8 @@ interface ElementSheetProps {
   onChangeRow: () => void;
   onDelete: () => void;
   onClose: () => void;
+  /** `panel` : panneau latéral du mode bureau, au lieu de la feuille basse. */
+  variant?: 'sheet' | 'panel';
 }
 
 interface Detail {
@@ -61,6 +63,7 @@ export function ElementSheet({
   onChangeRow,
   onDelete,
   onClose,
+  variant = 'sheet',
 }: ElementSheetProps) {
   if (!element) return null;
   const linked = element.linkedFixtures;
@@ -72,51 +75,43 @@ export function ElementSheet({
     .filter(Boolean)
     .join(' · ');
 
-  return (
-    <BottomSheet
-      open
-      modal={false}
-      floating
-      onClose={onClose}
-      title={element.label}
-      description={description}
-      footer={
-        canEdit ? (
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.square}
-              aria-label="Déplacer à gauche"
-              disabled={busy}
-              onClick={() => onMove(-1)}
-            >
-              <Icon name="arrow-left" size={20} strokeWidth={2.4} />
-            </button>
-            <button
-              type="button"
-              className={styles.square}
-              aria-label="Déplacer à droite"
-              disabled={busy}
-              onClick={() => onMove(1)}
-            >
-              <Icon name="arrow-right" size={20} strokeWidth={2.4} />
-            </button>
-            <button type="button" className={styles.wide} disabled={busy} onClick={onChangeRow}>
-              Changer de rangée
-            </button>
-            <button
-              type="button"
-              className={`${styles.square} ${styles.danger}`}
-              aria-label="Supprimer l’élément"
-              disabled={busy}
-              onClick={onDelete}
-            >
-              <Icon name="trash" size={20} strokeWidth={2.2} />
-            </button>
-          </div>
-        ) : undefined
-      }
-    >
+  const actions = canEdit ? (
+    <div className={styles.actions}>
+      <button
+        type="button"
+        className={styles.square}
+        aria-label="Déplacer à gauche"
+        disabled={busy}
+        onClick={() => onMove(-1)}
+      >
+        <Icon name="arrow-left" size={20} strokeWidth={2.4} />
+      </button>
+      <button
+        type="button"
+        className={styles.square}
+        aria-label="Déplacer à droite"
+        disabled={busy}
+        onClick={() => onMove(1)}
+      >
+        <Icon name="arrow-right" size={20} strokeWidth={2.4} />
+      </button>
+      <button type="button" className={styles.wide} disabled={busy} onClick={onChangeRow}>
+        Changer de rangée
+      </button>
+      <button
+        type="button"
+        className={`${styles.square} ${styles.danger}`}
+        aria-label="Supprimer l’élément"
+        disabled={busy}
+        onClick={onDelete}
+      >
+        <Icon name="trash" size={20} strokeWidth={2.2} />
+      </button>
+    </div>
+  ) : undefined;
+
+  const details = (
+    <>
       <dl className={styles.list}>
         {detailsOf(element).map((detail) => (
           <div key={detail.label} className={styles.item}>
@@ -128,6 +123,36 @@ export function ElementSheet({
       {element.kind === 'breaker' && (
         <CircuitSection elementId={element.id} propertyId={propertyId} canEdit={canEdit} />
       )}
+    </>
+  );
+
+  if (variant === 'panel') {
+    return (
+      <section className={styles.panel} aria-label={element.label}>
+        <header className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>{element.label}</h2>
+            <p className={styles.panelSub}>{description}</p>
+          </div>
+          <IconButton label="Fermer" icon="close" onClick={onClose} />
+        </header>
+        {details}
+        {actions && <div className={styles.panelActions}>{actions}</div>}
+      </section>
+    );
+  }
+
+  return (
+    <BottomSheet
+      open
+      modal={false}
+      floating
+      onClose={onClose}
+      title={element.label}
+      description={description}
+      footer={actions}
+    >
+      {details}
     </BottomSheet>
   );
 }

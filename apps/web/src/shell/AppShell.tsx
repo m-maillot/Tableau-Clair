@@ -1,5 +1,11 @@
 import { Link, Outlet, useLocation } from 'react-router';
-import { TabBar, type TabItem } from '../ui';
+import { useSession } from '../auth/session';
+import { greetingName } from '../home/format';
+import { useProperties, useSelectedProperty } from '../home/queries';
+import { useReviewCount } from '../review/useReviewCount';
+import { DESKTOP_QUERY, TabBar, useMediaQuery, type TabItem } from '../ui';
+import { SidebarNav } from './SidebarNav';
+import styles from './AppShell.module.css';
 
 const TABS: TabItem[] = [
   { id: 'home', label: 'Accueil', icon: 'home', href: '/' },
@@ -15,9 +21,12 @@ function currentTab(pathname: string): string {
   return 'home';
 }
 
-/** Cadre des écrans connectés : contenu + barre d'onglets mobile. */
+/** Cadre des écrans connectés : contenu + barre d'onglets mobile, ou sidebar sur bureau. */
 export function AppShell() {
   const { pathname } = useLocation();
+  const desktop = useMediaQuery(DESKTOP_QUERY);
+  if (desktop) return <DesktopShell current={currentTab(pathname)} />;
+
   return (
     <>
       <Outlet />
@@ -31,5 +40,28 @@ export function AppShell() {
         )}
       />
     </>
+  );
+}
+
+function DesktopShell({ current }: { current: string }) {
+  const { session } = useSession();
+  const properties = useProperties();
+  const [property] = useSelectedProperty(properties.data);
+  const badge = useReviewCount(property?.id);
+  const account = session.status === 'authenticated' ? greetingName(session.user) : undefined;
+
+  return (
+    <div className={styles.layout}>
+      <SidebarNav
+        items={TABS}
+        current={current}
+        badge={badge}
+        property={property?.name}
+        account={account}
+      />
+      <div className={styles.content}>
+        <Outlet />
+      </div>
+    </div>
   );
 }

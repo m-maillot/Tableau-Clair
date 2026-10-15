@@ -145,3 +145,12 @@
     transform: translateX(4px);
   }
 }
+
+/* Mode bureau : rangée pleine largeur, plus de défilement horizontal. */
+.fluid {
+  overflow-x: visible;
+}
+.found {
+  outline: 3px solid var(--color-blue);
+  outline-offset: 1px;
+}
