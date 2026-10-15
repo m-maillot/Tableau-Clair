@@ -5,6 +5,9 @@ name: tableau-clair
 
 services:
   app:
+    # APP_IMAGE est fourni par le workflow de déploiement (image du registre) ;
+    # sans lui, l'image est construite localement.
+    image: ${APP_IMAGE:-tableau-clair:local}
     build: .
     restart: unless-stopped
     env_file: .env

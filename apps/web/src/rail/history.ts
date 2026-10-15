@@ -1,11 +1,21 @@
-import type { Element } from '@tableau-clair/contracts';
+import type { Element, UpdateElementInput } from '@tableau-clair/contracts';
 
 export interface Place {
   rowId: string;
   position: number;
 }
 
+/** Champs modifiables d'un appareil (sans la `version`, gérée à l'envoi). */
+export type ElementChanges = Omit<UpdateElementInput, 'version'>;
+
 export type Command =
+  | {
+      kind: 'edit';
+      elementId: string;
+      before: ElementChanges;
+      after: ElementChanges;
+      label: string;
+    }
   | { kind: 'move'; elementId: string; before: Place; after: Place; label: string }
   | { kind: 'remove'; element: Element; label: string }
   | { kind: 'add'; element: Element; label: string };
@@ -42,7 +52,7 @@ export function afterRedo(history: History, command: Command): History {
  */
 export function remapElement(history: History, oldId: string, restored: Element): History {
   const remap = (command: Command): Command => {
-    if (command.kind === 'move' && command.elementId === oldId) {
+    if ((command.kind === 'move' || command.kind === 'edit') && command.elementId === oldId) {
       return { ...command, elementId: restored.id };
     }
     if ((command.kind === 'remove' || command.kind === 'add') && command.element.id === oldId) {

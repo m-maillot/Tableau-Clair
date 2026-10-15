@@ -1,4 +1,5 @@
 import {
+  setBoardPlanSchema,
   createFixtureSchema,
   createFloorSchema,
   createRoomSchema,
@@ -35,6 +36,7 @@ import {
   containsPoint,
   MIN_ROOM_SIZE,
   rectWithin,
+  WORLD_BOUNDS,
   shiftPoint,
   type Rect,
 } from '@tableau-clair/domain';
@@ -42,6 +44,7 @@ import type { FastifyInstance } from 'fastify';
 import { conflict, notFound, parseBody, unprocessable } from '../http';
 import type { ObjectStorage } from '../storage/object-storage';
 import {
+  boardAccess,
   fixtureAccess,
   floorAccess,
   parseId,
@@ -51,6 +54,7 @@ import {
 } from './access';
 import { assertPhotoInProperty } from './boards';
 import { linkedCounts } from './board-loader';
+import { placeUnplacedBoards } from './board-plan';
 
 type FloorRow = typeof floors.$inferSelect;
 type RoomRow = typeof rooms.$inferSelect;
@@ -169,7 +173,9 @@ export async function loadBreakers(db: DbExecutor, propertyId: string): Promise<
 }
 
 /** Plan complet d'un logement : étages, pièces, équipements avec leur liaison, disjoncteurs. */
-export async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan> {
+export async function loadPlan(db: DbExecutor, propertyId: string, userId?: string): Promise<Plan> {
+  // Les tableaux créés avant la règle « un tableau est un équipement du plan » sont posés au centre.
+  await placeUnplacedBoards(db, propertyId, userId ?? null);
   const floorRows = await db
     .select()
     .from(floors)
@@ -199,6 +205,18 @@ export async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan
     linkRows.map((l) => [l.fixtureId, { breakerId: l.breakerId, status: l.status }]),
   );
 
+  const boardRows_ = await db
+    .select({
+      id: boards.id,
+      name: boards.name,
+      location: boards.location,
+      floorId: boards.planFloorId,
+      x: boards.planX,
+      y: boards.planY,
+    })
+    .from(boards)
+    .where(eq(boards.propertyId, propertyId));
+
   const photoIds = floorRows.flatMap((f) => (f.backgroundImageId ? [f.backgroundImageId] : []));
   const photoRows = photoIds.length
     ? await db
@@ -221,6 +239,9 @@ export async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan
         fixtures: fixtureRows
           .filter((f) => roomSet.has(f.roomId))
           .map((f) => toFixture(f, links.get(f.id) ?? null)),
+        boards: boardRows_
+          .filter((b) => b.floorId === floor.id && b.x !== null && b.y !== null)
+          .map((b) => ({ id: b.id, name: b.name, location: b.location, x: b.x!, y: b.y! })),
       };
     }),
     breakers,
@@ -228,7 +249,7 @@ export async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan
 }
 
 /** Une pièce, ses limites et la place qu'elle laisse au canevas. */
-function assertRoomGeometry(canvas: { width: number; height: number }, rect: Rect) {
+function assertRoomGeometry(rect: Rect) {
   if (rect.w < MIN_ROOM_SIZE || rect.h < MIN_ROOM_SIZE) {
     throw unprocessable(
       'too_small',
@@ -238,8 +259,8 @@ function assertRoomGeometry(canvas: { width: number; height: number }, rect: Rec
       },
     );
   }
-  if (!rectWithin({ w: canvas.width, h: canvas.height }, rect)) {
-    throw unprocessable('out_of_bounds', 'La pièce dépasse du plan.');
+  if (!rectWithin(WORLD_BOUNDS, rect)) {
+    throw unprocessable('out_of_bounds', 'La pièce est trop loin de l’origine du plan.');
   }
 }
 
@@ -248,7 +269,36 @@ export function registerPlanRoutes(app: FastifyInstance, db: Database, storage: 
   app.get('/api/properties/:id/plan', async (request) => {
     const propertyId = idOf(request);
     await propertyAccess(db, request.userId, propertyId);
-    return loadPlan(db, propertyId);
+    return loadPlan(db, propertyId, request.userId);
+  });
+
+  // --- Tableau posé sur le plan ------------------------------------------------------------------------
+  app.put('/api/boards/:id/plan', async (request) => {
+    const id = idOf(request);
+    const input = parseBody(setBoardPlanSchema, request.body);
+    const { board, role } = await boardAccess(db, request.userId, id);
+    requireRole(role, 'editor');
+
+    const [floor] = await db
+      .select()
+      .from(floors)
+      .where(and(eq(floors.id, input.floorId), eq(floors.propertyId, board.propertyId)))
+      .limit(1);
+    if (!floor) throw notFound('Étage');
+    if (!rectWithin(WORLD_BOUNDS, { x: input.x, y: input.y, w: 0, h: 0 })) {
+      throw unprocessable('out_of_bounds', 'Le tableau est trop loin de l’origine du plan.');
+    }
+
+    await db
+      .update(boards)
+      .set({
+        planFloorId: floor.id,
+        planX: Math.round(input.x),
+        planY: Math.round(input.y),
+        updatedBy: request.userId,
+      })
+      .where(eq(boards.id, id));
+    return { id, floorId: floor.id, x: Math.round(input.x), y: Math.round(input.y) };
   });
 
   // --- Étages ---------------------------------------------------------------------------------------------
@@ -331,16 +381,8 @@ export function registerPlanRoutes(app: FastifyInstance, db: Database, storage: 
       if (input.backgroundImageId) {
         await assertPhotoInProperty(tx, input.backgroundImageId, floor.propertyId);
       }
-      // Réduire le plan ne doit pas faire sortir une pièce.
-      const width = input.width ?? locked.width;
-      const height = input.height ?? locked.height;
-      if (width !== locked.width || height !== locked.height) {
-        const existing = await tx.select().from(rooms).where(eq(rooms.floorId, id));
-        const outside = existing.find((r) => !rectWithin({ w: width, h: height }, rectOf(r)));
-        if (outside) {
-          throw unprocessable('rooms_outside', `La pièce « ${outside.name} » sortirait du plan.`);
-        }
-      }
+      // Le plan est illimité : sa largeur et sa hauteur ne sont que le cadrage de départ, elles ne
+      // retiennent plus aucune pièce.
 
       const [updated] = await tx
         .update(floors)
@@ -410,7 +452,7 @@ export function registerPlanRoutes(app: FastifyInstance, db: Database, storage: 
     const input = parseBody(createRoomSchema, request.body);
     const { floor, role } = await floorAccess(db, request.userId, idOf(request));
     requireRole(role, 'editor');
-    assertRoomGeometry(floor, input);
+    assertRoomGeometry(input);
 
     const [created] = await db
       .insert(rooms)
@@ -432,7 +474,7 @@ export function registerPlanRoutes(app: FastifyInstance, db: Database, storage: 
     const input = parseBody(updateRoomSchema, request.body);
 
     return db.transaction(async (tx) => {
-      const { floor, role } = await roomAccess(tx, request.userId, id);
+      const { role } = await roomAccess(tx, request.userId, id);
       requireRole(role, 'editor');
       const [locked] = await tx.select().from(rooms).where(eq(rooms.id, id)).for('update');
       if (!locked) throw notFound('Pièce');
@@ -444,7 +486,7 @@ export function registerPlanRoutes(app: FastifyInstance, db: Database, storage: 
         w: input.w ?? locked.w,
         h: input.h ?? locked.h,
       };
-      assertRoomGeometry(floor, next);
+      assertRoomGeometry(next);
 
       const [updated] = await tx
         .update(rooms)

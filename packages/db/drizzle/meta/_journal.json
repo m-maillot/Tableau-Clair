@@ -43,6 +43,13 @@
       "when": 1791988194286,
       "tag": "0005_custom_models_touch",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792070828780,
+      "tag": "0006_board_plan_position",
+      "breakpoints": true
     }
   ]
 }

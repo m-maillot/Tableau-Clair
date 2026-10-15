@@ -6,6 +6,7 @@ import {
   RCD_TYPES,
   ROLES,
   VERIFICATIONS,
+  PLAN_WORLD,
 } from '@tableau-clair/domain';
 import { z } from 'zod';
 
@@ -332,7 +333,8 @@ export type CreateCustomModelInput = z.infer<typeof createCustomModelSchema>;
 
 /** Dimensions par défaut du canevas d'un étage, en unités de plan. */
 export const FLOOR_DEFAULTS = { width: 1000, height: 700 } as const;
-export const PLAN_LIMITS = { maxCanvas: 4000, minCanvas: 200 } as const;
+/** `world` : le plan est illimité en pratique, ses coordonnées vont de −world à +world. */
+export const PLAN_LIMITS = { maxCanvas: 4000, minCanvas: 200, world: PLAN_WORLD } as const;
 
 export const fixtureKindSchema = z.enum(FIXTURE_KINDS);
 
@@ -383,11 +385,22 @@ export const fixtureSchema = z.object({
 });
 export type Fixture = z.infer<typeof fixtureSchema>;
 
+/** Tableau posé sur le plan : un équipement à part entière, sans pièce obligatoire. */
+export const planBoardSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  location: z.string().nullable(),
+  x: z.number(),
+  y: z.number(),
+});
+export type PlanBoard = z.infer<typeof planBoardSchema>;
+
 export const planFloorSchema = floorSchema.extend({
   /** Dimensions de l'image de fond (pour la cadrer), si elle existe. */
   background: z.object({ width: z.number().int(), height: z.number().int() }).nullable(),
   rooms: z.array(roomSchema),
   fixtures: z.array(fixtureSchema),
+  boards: z.array(planBoardSchema).default([]),
 });
 export type PlanFloor = z.infer<typeof planFloorSchema>;
 
@@ -412,7 +425,7 @@ export const planSchema = z.object({
 });
 export type Plan = z.infer<typeof planSchema>;
 
-const coordinate = z.number().finite().min(-PLAN_LIMITS.maxCanvas).max(PLAN_LIMITS.maxCanvas);
+const coordinate = z.number().finite().min(-PLAN_LIMITS.world).max(PLAN_LIMITS.world);
 const canvasSize = z.number().min(PLAN_LIMITS.minCanvas).max(PLAN_LIMITS.maxCanvas);
 
 /** Relie un équipement à un disjoncteur (remplace la liaison existante). */
@@ -441,6 +454,12 @@ export const breakerCircuitSchema = z.object({
 });
 export type BreakerCircuit = z.infer<typeof breakerCircuitSchema>;
 
+/** Position d'un tableau sur le plan (étage et coordonnées). */
+export const setBoardPlanSchema = z
+  .object({ floorId: z.string().uuid(), x: coordinate, y: coordinate })
+  .strict();
+export type SetBoardPlanInput = z.infer<typeof setBoardPlanSchema>;
+
 export const createFloorSchema = z.object({ name }).strict();
 export type CreateFloorInput = z.infer<typeof createFloorSchema>;
 
@@ -468,8 +487,8 @@ export const createRoomSchema = z
     name,
     x: coordinate,
     y: coordinate,
-    w: z.number().positive(),
-    h: z.number().positive(),
+    w: z.number().positive().max(PLAN_LIMITS.world),
+    h: z.number().positive().max(PLAN_LIMITS.world),
   })
   .strict();
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
@@ -479,8 +498,8 @@ export const updateRoomSchema = z
     name: name.optional(),
     x: coordinate.optional(),
     y: coordinate.optional(),
-    w: z.number().positive().optional(),
-    h: z.number().positive().optional(),
+    w: z.number().positive().max(PLAN_LIMITS.world).optional(),
+    h: z.number().positive().max(PLAN_LIMITS.world).optional(),
     ...versioned,
   })
   .strict();

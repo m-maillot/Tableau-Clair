@@ -136,8 +136,7 @@ describe('page compte', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Supprimer mon compte…' }));
     const dialog = await screen.findByRole('dialog', { name: 'Supprimer votre compte ?' });
 
-    expect(await within(dialog).findByText('Maison des Lilas')).toBeInTheDocument();
-    expect(dialog).toHaveTextContent('2 tableaux');
+    expect(await within(dialog).findByText(/2 tableaux, plan et photos/)).toBeInTheDocument();
     expect(dialog).toHaveTextContent('1 autre personne perd l’accès');
     expect(dialog).toHaveTextContent('Chez les parents');
 

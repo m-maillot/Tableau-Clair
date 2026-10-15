@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router';
 import { SessionProvider, useSession } from './auth/session';
-import { BoardSettingsPage, BoardsPage, NewBoardPage } from './board-settings/pages';
+import { BoardSettingsPage, NewBoardPage } from './board-settings/pages';
 import { HomePage } from './home/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { PlanPage } from './plan/PlanPage';
@@ -48,8 +48,8 @@ export function AppRoutes() {
         <Route path="/tableaux/nouveau" element={<NewBoardPage />} />
         <Route path="/tableaux/:boardId/parametres" element={<BoardSettingsPage />} />
         <Route element={<AppShell />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/tableaux" element={<BoardsPage />} />
+          <Route path="/" element={<Navigate to="/tableaux" replace />} />
+          <Route path="/tableaux" element={<HomePage />} />
           <Route path="/tableaux/:boardId" element={<EditorPage />} />
           <Route path="/plan" element={<PlanPage />} />
           <Route path="/verifier" element={<ReviewPage />} />

@@ -35,6 +35,7 @@ import {
   record,
   remapElement,
   type Command,
+  type ElementChanges,
   type History,
   type Place,
 } from './history';
@@ -50,6 +51,8 @@ export interface Notice {
 export interface RailConflict {
   saved: Element;
   mine: Place;
+  /** Modification complète (formulaire) : renvoyée telle quelle avec « Garder ma version ». */
+  changes?: ElementChanges;
 }
 
 const NOTICE_MS = 5000;
@@ -254,6 +257,66 @@ export function useRailActions(boardId: string) {
     }
   }
 
+  /** Modification de champs (formulaire d'édition) : validation locale, optimiste, envoi. */
+  async function applyUpdate(elementId: string, changes: ElementChanges): Promise<boolean> {
+    const board = getBoard();
+    const found = board && findElement(board, elementId);
+    if (!board || !found) {
+      refuse('Cet élément n’existe plus.');
+      return false;
+    }
+    const original = found.element;
+
+    const rowId = changes.rowId ?? original.rowId;
+    const target = board.rows.find((r) => r.id === rowId);
+    if (!target) {
+      refuse('Rangée introuvable.');
+      return false;
+    }
+    const problem = validateSpan(
+      rowState(target),
+      { position: changes.position ?? original.position, width: changes.width ?? original.width },
+      elementId,
+    );
+    if (problem) {
+      refuse(placementMessage(problem, board), elementId);
+      return false;
+    }
+
+    setBoard(putElement(board, { ...original, ...changes } as Element));
+    try {
+      const updated = await patchElement(elementId, { ...changes, version: original.version });
+      const current = getBoard();
+      if (current) setBoard(putElement(current, updated));
+      return true;
+    } catch (error) {
+      const current = getBoard();
+      if (error instanceof ApiResponseError && error.status === 409) {
+        const saved = elementSchema.safeParse(error.details);
+        if (saved.success && current) {
+          setBoard(putElement(current, saved.data));
+          const next: RailConflict = {
+            saved: saved.data,
+            mine: {
+              rowId: changes.rowId ?? saved.data.rowId,
+              position: changes.position ?? saved.data.position,
+            },
+            changes,
+          };
+          conflictRef.current = next;
+          setConflict(next);
+          return false;
+        }
+      }
+      if (current) setBoard(putElement(current, original));
+      setNotice({
+        ...failureNotice(error),
+        retry: () => void enqueue(async () => void (await applyUpdate(elementId, changes))),
+      });
+      return false;
+    }
+  }
+
   async function applyRemove(elementId: string): Promise<boolean> {
     const board = getBoard();
     const found = board && findElement(board, elementId);
@@ -293,6 +356,28 @@ export function useRailActions(boardId: string) {
           text: `« ${current.label} » : ${moduleRange(after.position, current.width)}.`,
         });
       }
+    });
+
+  /** Enregistre le formulaire d'édition d'un appareil. Résout à vrai si tout est enregistré. */
+  const update = (element: Element, changes: ElementChanges) =>
+    enqueue(async () => {
+      const board = getBoard();
+      const current = (board && findElement(board, element.id)?.element) || element;
+      const before = Object.fromEntries(
+        Object.keys(changes).map((key) => [key, current[key as keyof Element]]),
+      ) as ElementChanges;
+      if (!(await applyUpdate(current.id, changes))) return false;
+      commit(
+        record(historyRef.current, {
+          kind: 'edit',
+          elementId: current.id,
+          before,
+          after: changes,
+          label: `Modification de « ${changes.label ?? current.label} »`,
+        }),
+      );
+      setNotice({ tone: 'info', text: `« ${changes.label ?? current.label} » enregistré.` });
+      return true;
     });
 
   /** Glisser-déposer : place l'élément exactement sur le module visé, dans n'importe quelle rangée. */
@@ -418,6 +503,14 @@ export function useRailActions(boardId: string) {
       const command = nextUndo(historyRef.current);
       if (!command) return;
 
+      if (command.kind === 'edit') {
+        if (await applyUpdate(command.elementId, command.before)) {
+          commit(afterUndo(historyRef.current, command));
+          setNotice({ tone: 'info', text: `Annulé : ${command.label.toLowerCase()}.` });
+        }
+        return;
+      }
+
       if (command.kind === 'move') {
         if (await applyMove(command.elementId, command.before)) {
           commit(afterUndo(historyRef.current, command));
@@ -496,9 +589,11 @@ export function useRailActions(boardId: string) {
       }
 
       const done =
-        command.kind === 'move'
-          ? await applyMove(command.elementId, command.after)
-          : await applyRemove(command.element.id);
+        command.kind === 'edit'
+          ? await applyUpdate(command.elementId, command.after)
+          : command.kind === 'move'
+            ? await applyMove(command.elementId, command.after)
+            : await applyRemove(command.element.id);
       if (done) {
         commit(afterRedo(historyRef.current, command));
         setNotice({ tone: 'info', text: `Rétabli : ${command.label.toLowerCase()}.` });
@@ -512,7 +607,28 @@ export function useRailActions(boardId: string) {
     setConflict(null);
     if (!pending) return Promise.resolve();
     return enqueue(async () => {
-      const { saved, mine } = pending;
+      const { saved, mine, changes } = pending;
+      if (changes) {
+        const before = Object.fromEntries(
+          Object.keys(changes).map((key) => [key, saved[key as keyof Element]]),
+        ) as ElementChanges;
+        if (await applyUpdate(saved.id, changes)) {
+          commit(
+            record(historyRef.current, {
+              kind: 'edit',
+              elementId: saved.id,
+              before,
+              after: changes,
+              label: `Modification de « ${saved.label} »`,
+            }),
+          );
+          setNotice({
+            tone: 'info',
+            text: `« ${saved.label} » : votre version a été enregistrée.`,
+          });
+        }
+        return;
+      }
       const before: Place = { rowId: saved.rowId, position: saved.position };
       if (await applyMove(saved.id, mine)) {
         commit(
@@ -540,6 +656,7 @@ export function useRailActions(boardId: string) {
     keepConflict,
     dismissConflict,
     move,
+    update,
     moveTo,
     changeRow,
     add,

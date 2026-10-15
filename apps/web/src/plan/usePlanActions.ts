@@ -27,6 +27,7 @@ import {
   NetworkError,
   unlinkFixture,
   reorderFloors,
+  setBoardPlan,
   updateFixture,
   updateFloor,
   updateRoom,
@@ -45,6 +46,7 @@ import {
   removeFixture,
   removeFloor,
   removeRoom,
+  putBoardPosition,
   setFixtureLink,
 } from './plan-cache';
 
@@ -59,7 +61,7 @@ const NOTICE_MS = 5000;
 
 /** Messages pour les refus métier du serveur (codes de `routes/plan.ts`). */
 const RULES: Record<string, string> = {
-  out_of_bounds: 'La pièce dépasse du plan.',
+  out_of_bounds: 'La pièce est trop loin de l’origine du plan.',
   too_small: 'Cette pièce est trop petite.',
   outside_room: 'Déposez l’équipement à l’intérieur d’une pièce.',
   room_not_found: 'Pièce de destination introuvable.',
@@ -337,6 +339,17 @@ export function usePlanActions(propertyId: string) {
         optimistic: (plan) => setFixtureLink(plan, fixtureId, null),
         request: () => unlinkFixture(fixtureId),
         refetch: true,
+      }),
+
+    /** Pose le tableau (équipement du plan) à un autre endroit, ou sur un autre étage. */
+    moveBoard: (boardId: string, floorId: string, x: number, y: number) =>
+      run<void>({
+        optimistic: (plan) => putBoardPosition(plan, boardId, floorId, x, y),
+        request: async () => {
+          await setBoardPlan(boardId, { floorId, x, y });
+          // La modification touche aussi le tableau : ses écrans doivent relire sa version.
+          void client.invalidateQueries({ queryKey: ['boards'] });
+        },
       }),
 
     removeFixture: (fixtureId: string) =>

@@ -105,6 +105,7 @@ sont décrits par les schémas Zod de `packages/contracts`.
 | `POST`                 | `/api/rows/:id/elements`                                                   | éditeur           |
 | `GET` `PATCH` `DELETE` | `/api/elements/:id`                                                        | membre / éditeur  |
 | `GET`                  | `/api/elements/:id/circuit` (équipements alimentés, par étage et pièce)    | membre            |
+| `PUT`                  | `/api/boards/:id/plan` (position du tableau sur le plan)                   | éditeur           |
 | `PUT` `DELETE`         | `/api/fixtures/:id/link` (relier / délier un équipement à un disjoncteur)  | éditeur           |
 | `POST`                 | `/api/properties/:id/photos?usage=…` (corps = image)                       | éditeur           |
 | `GET`                  | `/api/photos/:id` (métadonnées)                                            | membre            |
@@ -138,15 +139,17 @@ il peut être **enregistré comme modèle du compte** et réutilisé dans tous l
 ### Plan du logement
 
 Un plan par étage (onglets : ajout, renommage, ordre, suppression), dessiné en SVG dans un canevas de
-1000 × 700 unités. Les règles de géométrie sont dans `packages/domain/src/plan.ts`, partagées par
+un plan illimité (le cadre 1000 × 700 n'est que le cadrage de départ ; les coordonnées vont de −100 000 à +100 000). Les règles de géométrie sont dans `packages/domain/src/plan.ts`, partagées par
 le navigateur et le serveur :
 
 - **Pièces** : rectangles tracés en mode « Dessiner une pièce », déplacés par glisser, redimensionnés
-  par les poignées de coin (taille minimale 40, jamais hors du plan). Les équipements suivent leur
+  par les poignées de coin (taille minimale 40 ; aucune autre limite). Les équipements suivent leur
   pièce quand elle est déplacée, et sont ramenés dedans si elle rétrécit.
 - **Équipements** : posés dans une pièce, depuis la palette (appui = au centre de la pièce active,
   glissé = là où on lâche) ou déplacés sur le plan. Hors de toute pièce, le dépôt est refusé.
-- **Alternative au glisser** : flèches de déplacement fin et pas de taille, pour le clavier.
+- **Liste des pièces** : à droite sur bureau (sous la fiche de la sélection), derrière le bouton « Pièces » sur mobile. Un clic sélectionne la pièce et recentre le plan dessus.
+- **Zoom et déplacement** : boutons + / − / « Voir tout le plan » (de 10 % à 800 %, « Voir tout le plan » cadre le contenu), Ctrl/⌘ + molette ou pincement du pavé tactile, pincement à deux doigts au tactile ; on déplace la vue dans toutes les directions, sans bord, en faisant glisser le fond (ou à la molette) ; pour déplacer l'image de fond, passer en mode « Déplacer l'image ». Les gestes d'édition restent en coordonnées du plan.
+- **Alternative au glisser** : sur une pièce sélectionnée, les flèches la déplacent et Maj + flèches la redimensionnent ; pour un équipement, des flèches dans sa fiche.
 - **Image de fond** par étage : import, opacité, taille, verrouillage (déverrouillée, elle se déplace
   en la faisant glisser sur le plan). Remplacer ou retirer l'image supprime l'ancien fichier.
 - **Circuit** : `?breaker=<id>` met en évidence les équipements d'un disjoncteur (anneau lime),
@@ -198,8 +201,8 @@ une URL signée valable 5 minutes, utilisable directement dans une balise `<img>
 | Route                      | Écran                                                                              | Accès                                                |
 | -------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `/connexion`               | Connexion (lien magique, Google)                                                   | public ; redirige vers `/` si connecté               |
-| `/`                        | Accueil : logement, fiabilité du repérage, tableaux, recherche                     | session requise, sinon redirection vers `/connexion` |
-| `/tableaux`                | Liste des tableaux du logement actif                                               | session requise                                      |
+| `/`                        | Redirige vers `/tableaux`                                                          | session requise, sinon redirection vers `/connexion` |
+| `/tableaux`                | Page d'arrivée : fiabilité du repérage, recherche, tableaux, création              | session requise                                      |
 | `/tableaux/nouveau`        | Création d'un tableau (nom, emplacement, photo, rangées, modules, notes)           | session requise                                      |
 | `/tableaux/:id`            | Éditeur de rail : mobile (feuille de détail) et bureau (sidebar, palette, panneau) | session requise                                      |
 | `/tableaux/:id/parametres` | Paramètres : modification, duplication, suppression                                | session requise                                      |
@@ -288,3 +291,30 @@ L'éditeur de rail s'adapte à la largeur (`useMediaQuery`, `DESKTOP_QUERY`) :
   Le service worker n'est enregistré qu'en production. Hors ligne : bandeau « lecture seule » avec
   l'heure du dernier état, actions d'édition retirées. La déconnexion et la suppression du compte
   vident les données gardées pour la lecture hors ligne.
+
+### Logement par défaut
+
+La V1 n'expose pas la notion de logement : il n'y a ni écran ni sélecteur. Au premier accès,
+`GET /api/properties` crée un logement « Mon logement » (propriétaire = le compte, sous verrou pour
+éviter les doublons) et toute l'interface travaille dessus. Le modèle (logements, membres, rôles)
+reste intact pour introduire plusieurs logements et le partage plus tard.
+
+### Modifier et supprimer un appareil
+
+« Modifier » (feuille de l'éditeur) ouvre le formulaire complet : libellé, calibre, courbe, pôles,
+différentiel en amont, position (← →, rangée, largeur), câbles sortants, section, marque, modèle,
+notes, photo. Les champs dépendent du type (§6) ; la largeur est bornée par l'espace libre voisin avec
+un message explicite (mêmes règles que le serveur, `packages/domain`). Seuls les champs modifiés sont
+envoyés avec la `version` ; un conflit ouvre la comparaison champ par champ. Une modification
+s'annule et se rétablit comme un déplacement. La suppression affiche le module libéré et les
+équipements concernés (leurs liaisons passent à « inconnue », ils apparaissent dans « À vérifier ») ;
+sur bureau, les confirmations sont des dialogues centrés.
+
+### Un tableau est un équipement du plan
+
+À sa création (ou à sa duplication), un tableau est posé **en plein milieu** du plan, sur le premier
+étage (créé au besoin, « Rez-de-chaussée »). Il y figure comme un équipement : carré sombre avec son
+nom, **déplaçable n'importe où** (même hors d'une pièce), à placer là où il se trouve réellement. Sa
+fiche sur le plan donne accès au tableau. Technique : `boards.plan_floor_id` / `plan_x` / `plan_y`
+(migration 0006) et `PUT /api/boards/:id/plan` ; les tableaux antérieurs sont posés au centre à la
+première lecture du plan, et un tableau dont l'étage est supprimé est replacé au centre.

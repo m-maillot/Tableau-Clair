@@ -160,3 +160,57 @@
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
+
+/* Bureau : la colonne de droite est réservée en permanence. Y mettre le panneau à la sélection
+   ferait redimensionner le plan sous le doigt (et déplacer la pièce touchée). */
+@media (min-width: 1024px) {
+  .page {
+    max-width: none;
+    margin: 0;
+    padding: 32px 392px 32px 32px;
+  }
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Bureau : liste des pièces dans la colonne de droite, sous la fiche de la sélection. */
+.rooms {
+  display: none;
+}
+.roomsTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 800;
+}
+.roomsTitle span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+@media (min-width: 1024px) {
+  .page {
+    /* La fiche flottante laisse la place à la liste des pièces. */
+    --side-reserved: min(38dvh, 340px);
+  }
+  .rooms {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    display: block;
+    width: 360px;
+    max-height: min(38dvh, 340px);
+    padding: 14px;
+    overflow-y: auto;
+    border: 1px solid #e3e8f2;
+    border-radius: 22px;
+    background: var(--color-white);
+    box-shadow: 0 -4px 28px rgba(13, 27, 61, 0.1);
+  }
+}

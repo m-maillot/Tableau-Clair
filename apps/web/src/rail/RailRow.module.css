@@ -94,7 +94,7 @@
 /* Sélection : fond lime et contour sombre (spec §15.2). */
 .selected {
   outline: 3px solid var(--color-ink);
-  outline-offset: 1px;
+  outline-offset: -3px;
   background: var(--color-lime);
   color: var(--color-ink);
 }
@@ -111,7 +111,7 @@
 }
 .freeSelected {
   outline: 3px solid var(--color-ink);
-  outline-offset: 1px;
+  outline-offset: -3px;
   border-color: transparent;
   background: var(--color-lime);
   color: var(--color-ink);
@@ -128,7 +128,7 @@
 /* Déplacement refusé : secousse et contour rouge (réduite par prefers-reduced-motion). */
 .refused {
   outline: 3px solid var(--color-danger);
-  outline-offset: 1px;
+  outline-offset: -3px;
   animation: shake 0.35s ease-in-out;
 }
 @keyframes shake {
@@ -152,5 +152,20 @@
 }
 .found {
   outline: 3px solid var(--color-blue);
-  outline-offset: 1px;
+  outline-offset: -3px;
+}
+
+/* Cellule d'appareil (zone role="button") : sélection de texte coupée pour que le glisser prenne. */
+div.cell {
+  user-select: none;
+  -webkit-user-drag: element;
+}
+/* Aperçu du dépôt : les modules qui seront occupés. */
+.dropHint {
+  grid-row: 1;
+  z-index: 1;
+  border: 3px solid var(--color-blue);
+  border-radius: 8px;
+  background: rgba(15, 91, 255, 0.14);
+  pointer-events: none;
 }

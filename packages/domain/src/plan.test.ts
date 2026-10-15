@@ -4,6 +4,7 @@ import {
   containsPoint,
   MIN_ROOM_SIZE,
   moveRect,
+  PLAN_WORLD,
   rectFromCorners,
   rectWithin,
   resizeRect,
@@ -107,5 +108,28 @@ describe('roomAt', () => {
 describe('shiftPoint', () => {
   it('translate', () => {
     expect(shiftPoint({ x: 10, y: 20 }, 5, -5)).toEqual({ x: 15, y: 15 });
+  });
+});
+
+describe('plan illimité', () => {
+  it('déplace sans limite pratique, y compris vers les coordonnées négatives', () => {
+    const room = { x: 0, y: 0, w: 100, h: 100 };
+    expect(moveRect(room, -5000, -3000)).toMatchObject({ x: -5000, y: -3000 });
+    // Au-delà du monde, la pièce est ramenée à ses limites.
+    expect(moveRect(room, 1e9, 0).x).toBe(PLAN_WORLD - 100);
+  });
+
+  it('redimensionne par une poignée au-delà de l’ancien canevas', () => {
+    const room = { x: 100, y: 100, w: 100, h: 100 };
+    expect(resizeRect(room, 'se', 5000, 5000)).toEqual({ x: 100, y: 100, w: 5100, h: 5100 });
+    expect(resizeRect(room, 'nw', -2000, -2000)).toEqual({ x: -1900, y: -1900, w: 2100, h: 2100 });
+  });
+
+  it('garde le comportement borné quand on donne un canevas', () => {
+    const room = { x: 0, y: 0, w: 100, h: 100 };
+    expect(moveRect(room, 5000, 0, { w: 1000, h: 700 }).x).toBe(900);
+    expect(rectWithin({ x: -10, y: -10, w: 100, h: 100 }, { x: -5, y: -5, w: 20, h: 20 })).toBe(
+      true,
+    );
   });
 });

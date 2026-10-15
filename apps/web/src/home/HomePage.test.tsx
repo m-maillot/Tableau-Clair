@@ -117,9 +117,8 @@ describe('Accueil', () => {
     renderApp();
 
     expect(await screen.findByRole('heading', { name: 'Bonjour, Martial' })).toBeInTheDocument();
-    expect(
-      await screen.findByRole('button', { name: /Maison des Lilas · 2 tableaux/ }),
-    ).toBeInTheDocument();
+    // La notion de logement n'est pas exposée : ni sélecteur ni nom de logement.
+    expect(screen.queryByRole('button', { name: /Maison des Lilas/ })).not.toBeInTheDocument();
 
     const reliability = await screen.findByRole('region', { name: 'Fiabilité du repérage' });
     expect(reliability).toHaveTextContent('38 / 52');
@@ -184,7 +183,7 @@ describe('Accueil', () => {
   it('propose d’ajouter un tableau quand il n’y en a pas', async () => {
     mockServer({ properties: [property(1, 'Maison')], boards: { [ID(101)]: [] } });
     renderApp();
-    const link = await screen.findByRole('link', { name: 'Ajouter un tableau' });
+    const link = await screen.findByRole('link', { name: 'Créer mon premier tableau' });
     expect(link).toHaveAttribute('href', '/tableaux/nouveau');
   });
 
@@ -212,73 +211,17 @@ describe('Accueil', () => {
     );
     fail = false;
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
-    expect(await screen.findByRole('button', { name: /Maison/ })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Tableaux' })).toBeInTheDocument();
   });
 });
 
-describe('Premier logement', () => {
-  it('propose de créer un logement puis affiche l’accueil', async () => {
-    const calls = mockServer({ properties: [] });
+describe('Arrivée', () => {
+  it('atterrit sur les tableaux, sans écran de logement', async () => {
+    mockServer({ properties: [property(1, 'Mon logement')], boards: { [ID(101)]: [] } });
     renderApp();
-
-    expect(
-      await screen.findByRole('heading', { name: 'Créez votre premier logement' }),
-    ).toBeInTheDocument();
-    const submit = screen.getByRole('button', { name: 'Créer le logement' });
-    expect(submit).toBeDisabled();
-
-    await userEvent.type(screen.getByLabelText('Nom du logement'), 'Maison des Lilas');
-    await userEvent.click(submit);
-
-    expect(await screen.findByRole('button', { name: /Maison des Lilas/ })).toBeInTheDocument();
-    expect(calls).toContain('POST /api/properties');
-  });
-});
-
-describe('Sélecteur de logement', () => {
-  const two: Server = {
-    properties: [property(1, 'Maison des Lilas'), property(2, 'Résidence secondaire')],
-    boards: {
-      [ID(101)]: [board(1, 'Tableau principal', 4, 24, null)],
-      [ID(102)]: [],
-    },
-  };
-
-  it('change de logement et mémorise le choix', async () => {
-    mockServer(two);
-    const first = renderApp();
-
-    await userEvent.click(await screen.findByRole('button', { name: /Maison des Lilas/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'Mes logements' });
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Résidence secondaire' }));
-
-    expect(await screen.findByRole('button', { name: /Résidence secondaire/ })).toBeInTheDocument();
-    expect(window.localStorage.getItem('tableau-clair.property')).toBe(ID(102));
-
-    // Au rechargement, le logement choisi est celui qui s'affiche.
-    first.unmount();
-    renderApp();
-    expect(await screen.findByRole('button', { name: /Résidence secondaire/ })).toBeInTheDocument();
-  });
-
-  it('ignore un identifiant mémorisé qui n’existe plus', async () => {
-    window.localStorage.setItem('tableau-clair.property', ID(999));
-    mockServer(two);
-    renderApp();
-    expect(await screen.findByRole('button', { name: /Maison des Lilas/ })).toBeInTheDocument();
-  });
-
-  it('crée un logement depuis la feuille', async () => {
-    mockServer(two);
-    renderApp();
-
-    await userEvent.click(await screen.findByRole('button', { name: /Maison des Lilas/ }));
-    const dialog = await screen.findByRole('dialog');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Nouveau logement' }));
-    await userEvent.type(within(dialog).getByLabelText('Nom du nouveau logement'), 'Studio');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Créer le logement' }));
-
-    expect(await screen.findByRole('button', { name: /Studio/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Bonjour, Martial' })).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/tableaux');
+    expect(screen.queryByRole('heading', { name: /premier logement/i })).not.toBeInTheDocument();
   });
 });
 
@@ -384,15 +327,16 @@ describe('Recherche', () => {
 });
 
 describe('Navigation', () => {
-  it('affiche la barre d’onglets avec l’accueil actif', async () => {
+  it('affiche la barre d’onglets avec les tableaux actifs', async () => {
     mockServer({ properties: [property(1, 'Maison')] });
     renderApp();
     const nav = await screen.findByRole('navigation', { name: 'Navigation principale' });
-    expect(within(nav).getByRole('link', { name: 'Accueil' })).toHaveAttribute(
+    expect(within(nav).getByRole('link', { name: 'Tableaux' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(within(nav).getAllByRole('link')).toHaveLength(4);
+    expect(within(nav).queryByRole('link', { name: 'Accueil' })).not.toBeInTheDocument();
+    expect(within(nav).getAllByRole('link')).toHaveLength(3);
   });
 
   it('ne laisse aucun onglet mener à une page vide', async () => {

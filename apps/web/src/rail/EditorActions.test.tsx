@@ -341,8 +341,9 @@ function createServer(
       if (!target) return json({ code: 'not_found', message: 'x' }, 404);
       if (body!.version !== target.version)
         return json({ code: 'version_conflict', message: 'x', details: full(target) }, 409);
-      if (typeof body!.position === 'number') target.position = body!.position;
-      if (typeof body!.rowId === 'string') target.rowId = body!.rowId;
+      const fields = { ...body! };
+      delete fields.version;
+      Object.assign(target, fields);
       target.version += 1;
       return json(full(target));
     }
@@ -568,10 +569,14 @@ describe('suppression', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Supprimer l’élément' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Supprimer « Four » ?' });
-    expect(dialog).toHaveTextContent('3 équipements du plan sont reliés');
-    expect(dialog).toHaveTextContent('inconnues');
+    expect(dialog).toHaveTextContent('Le module 3 de la rangée 1 devient libre');
+    expect(dialog).toHaveTextContent(
+      '3 équipements perdent leur disjoncteur et passent à « inconnue »',
+    );
+    expect(await within(dialog).findByText('Hotte')).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Aucun n’est supprimé');
 
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Supprimer' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Supprimer l’appareil' }));
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /^Four/ })).not.toBeInTheDocument(),
     );
@@ -616,7 +621,9 @@ describe('annuler / rétablir', () => {
     await select(/^Four/);
     await userEvent.click(screen.getByRole('button', { name: 'Supprimer l’élément' }));
     await userEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Supprimer' }),
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Supprimer l’appareil',
+      }),
     );
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /^Four/ })).not.toBeInTheDocument(),
@@ -662,6 +669,107 @@ describe('annuler / rétablir', () => {
 
     await userEvent.keyboard('{Control>}z{/Control}');
     await waitFor(() => expect(server.position('Plaques')).toBe(3));
+  });
+});
+
+describe('modifier un appareil', () => {
+  const open = async (name: RegExp, sheetName: string) => {
+    await select(name);
+    await userEvent.click(await screen.findByRole('button', { name: 'Modifier' }));
+    return screen.findByRole('dialog', { name: new RegExp(`Modifier : ${sheetName}`) });
+  };
+
+  it('affiche les champs du disjoncteur et n’envoie que ce qui change', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await open(/^Plaques/, 'Disjoncteur');
+
+    expect(within(dialog).getByLabelText('Libellé')).toHaveValue('Plaques');
+    expect(within(dialog).getByRole('group', { name: 'Calibre' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: 'Courbe' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: 'Pôles' })).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Différentiel en amont')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Enregistrer' })).toBeDisabled();
+
+    await userEvent.clear(within(dialog).getByLabelText('Libellé'));
+    await userEvent.type(within(dialog).getByLabelText('Libellé'), 'Plaques cuisson');
+    await userEvent.click(within(dialog).getByRole('button', { name: '20' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'C' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer' }));
+
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({
+        method: 'PATCH',
+        body: { label: 'Plaques cuisson', ratingA: 20, curve: 'C', version: 1 },
+      }),
+    );
+    expect(server.writes().at(-1)!.body).not.toHaveProperty('position');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('adapte les champs au type : pas de courbe sur un parafoudre', async () => {
+    createServer();
+    renderEditor();
+    const dialog = await open(/^Parafoudre/, 'Parafoudre');
+    expect(within(dialog).queryByRole('group', { name: 'Calibre' })).toBeNull();
+    expect(within(dialog).queryByRole('group', { name: 'Courbe' })).toBeNull();
+    expect(within(dialog).getByRole('group', { name: 'Pôles' })).toBeInTheDocument();
+  });
+
+  it('borne la largeur par le voisin et explique pourquoi', async () => {
+    createServer();
+    renderEditor();
+    // « Four » est au module 3 ; « Plaques » occupe le module 4 : largeur maximale 1.
+    const dialog = await open(/^Four/, 'Disjoncteur');
+    const plus = within(dialog).getByRole('button', { name: 'Augmenter : Largeur' });
+    expect(plus).toBeDisabled();
+    expect(dialog).toHaveTextContent('Le module 4 est occupé : largeur maximale 1.');
+  });
+
+  it('déplace et change la largeur depuis le formulaire, en un seul enregistrement', async () => {
+    const server = createServer();
+    renderEditor();
+    // « Parafoudre » : modules 7–8, libre à sa droite.
+    const dialog = await open(/^Parafoudre/, 'Parafoudre');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Déplacer à droite' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer' }));
+    await waitFor(() =>
+      expect(server.writes().at(-1)).toMatchObject({ method: 'PATCH', body: { position: 7 } }),
+    );
+  });
+
+  it('annule la modification enregistrée', async () => {
+    const server = createServer();
+    renderEditor();
+    const dialog = await open(/^Plaques/, 'Disjoncteur');
+    await userEvent.clear(within(dialog).getByLabelText('Libellé'));
+    await userEvent.type(within(dialog).getByLabelText('Libellé'), 'Cuisson');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer' }));
+    await waitFor(() =>
+      expect(server.elements.find((e) => e.id === ID(503))!.label).toBe('Cuisson'),
+    );
+
+    await userEvent.click(undoButton());
+    await waitFor(() =>
+      expect(server.elements.find((e) => e.id === ID(503))!.label).toBe('Plaques'),
+    );
+  });
+
+  it('ouvre la confirmation de suppression depuis le formulaire', async () => {
+    createServer();
+    renderEditor();
+    const dialog = await open(/^Plaques/, 'Disjoncteur');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Supprimer l’appareil' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Supprimer « Plaques » ?' }),
+    ).toBeInTheDocument();
+  });
+
+  it('ne propose pas la modification à un lecteur', async () => {
+    createServer({ role: 'viewer' });
+    renderEditor();
+    await select(/^Plaques/);
+    expect(screen.queryByRole('button', { name: 'Modifier' })).toBeNull();
   });
 });
 
@@ -1005,8 +1113,11 @@ describe('mode bureau', () => {
     return {
       setData: (type: string, value: string) => void store.set(type, value),
       getData: (type: string) => store.get(type) ?? '',
+      get types() {
+        return [...store.keys()];
+      },
       effectAllowed: 'all',
-      dropEffect: 'move',
+      dropEffect: 'none',
     };
   };
   const slot = (n: number) =>
@@ -1043,6 +1154,7 @@ describe('mode bureau', () => {
     const data = transfer();
     fireEvent.dragStart(plaques, { dataTransfer: data });
     fireEvent.dragOver(slot(5), { dataTransfer: data });
+    expect(data.dropEffect).toBe('move');
     fireEvent.drop(slot(5), { dataTransfer: data });
 
     await waitFor(() =>
@@ -1057,6 +1169,9 @@ describe('mode bureau', () => {
     const chip = within(palette).getByRole('button', { name: /^Différentiel/ });
     const data = transfer();
     fireEvent.dragStart(chip, { dataTransfer: data });
+    // Le navigateur refuse le dépôt si l'effet annoncé ne correspond pas à l'effet permis (copie).
+    fireEvent.dragOver(slot(9), { dataTransfer: data });
+    expect(data.dropEffect).toBe('copy');
     fireEvent.drop(slot(9), { dataTransfer: data });
 
     await waitFor(() =>

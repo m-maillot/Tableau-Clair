@@ -1,4 +1,4 @@
-import type { Fixture, Floor, Plan, PlanFloor, Room } from '@tableau-clair/contracts';
+import type { Fixture, Floor, Plan, PlanBoard, PlanFloor, Room } from '@tableau-clair/contracts';
 
 /** Mises à jour immuables du plan en cache (retours optimistes et réconciliation serveur). */
 
@@ -13,7 +13,7 @@ export function patchFloor(plan: Plan, floor: Floor): Plan {
 }
 
 export function addFloor(plan: Plan, floor: Floor): Plan {
-  const entry: PlanFloor = { ...floor, background: null, rooms: [], fixtures: [] };
+  const entry: PlanFloor = { ...floor, background: null, rooms: [], fixtures: [], boards: [] };
   return { ...plan, floors: [...plan.floors, entry].sort((a, b) => a.index - b.index) };
 }
 
@@ -110,5 +110,31 @@ export function setFixtureLink(plan: Plan, fixtureId: string, link: Fixture['lin
           ? { ...b, linkedCount: b.linkedCount + 1 }
           : b,
     ),
+  };
+}
+
+/** Déplace un tableau sur le plan (il peut changer d'étage). */
+export function putBoardPosition(
+  plan: Plan,
+  boardId: string,
+  floorId: string,
+  x: number,
+  y: number,
+): Plan {
+  let board: PlanBoard | undefined;
+  for (const floor of plan.floors) {
+    board = board ?? floor.boards.find((b) => b.id === boardId);
+  }
+  if (!board) return plan;
+  const moved = { ...board, x, y };
+  return {
+    ...plan,
+    floors: plan.floors.map((floor) => ({
+      ...floor,
+      boards: [
+        ...floor.boards.filter((b) => b.id !== boardId),
+        ...(floor.id === floorId ? [moved] : []),
+      ],
+    })),
   };
 }

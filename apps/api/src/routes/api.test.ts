@@ -140,6 +140,21 @@ describe('accès', () => {
     expect(list.map((p) => p.id)).not.toContain(b.property.id);
   });
 
+  it('crée un logement par défaut au premier accès, une seule fois', async () => {
+    const user = await createUser();
+    const [first, second] = await Promise.all([
+      call(user, 'GET', '/api/properties'),
+      call(user, 'GET', '/api/properties'),
+    ]);
+    const again = await call(user, 'GET', '/api/properties');
+    for (const response of [first, second, again]) {
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveLength(1);
+      expect(response.body[0]).toMatchObject({ name: 'Mon logement', role: 'owner' });
+    }
+    expect(again.body[0].id).toBe(first.body[0].id);
+  });
+
   it('applique les rôles : lecteur en lecture seule, éditeur sans suppression de logement', async () => {
     const { property, board, rows } = await scenario();
     const viewer = await addMember(property.id, 'viewer');
@@ -263,7 +278,7 @@ describe('tableaux', () => {
 
     const [floor] = await db
       .insert(schema.floors)
-      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .values({ propertyId: property.id, name: 'RDC', index: 10, width: 100, height: 100 })
       .returning();
     const [room] = await db
       .insert(schema.rooms)
@@ -441,7 +456,7 @@ describe('tableaux', () => {
       .body;
     const [floor] = await db
       .insert(schema.floors)
-      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .values({ propertyId: property.id, name: 'RDC', index: 10, width: 100, height: 100 })
       .returning();
     const [room] = await db
       .insert(schema.rooms)
@@ -484,7 +499,7 @@ describe('tableaux', () => {
 
     const [floor] = await db
       .insert(schema.floors)
-      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .values({ propertyId: property.id, name: 'RDC', index: 10, width: 100, height: 100 })
       .returning();
     const [room] = await db
       .insert(schema.rooms)
@@ -523,7 +538,7 @@ describe('tableaux', () => {
     const a = (await call(owner, 'POST', `/api/rows/${rows[0]!.id}/elements`, breaker(0))).body;
     const [floor] = await db
       .insert(schema.floors)
-      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .values({ propertyId: property.id, name: 'RDC', index: 10, width: 100, height: 100 })
       .returning();
     const [room] = await db
       .insert(schema.rooms)
@@ -730,7 +745,7 @@ describe('éléments', () => {
 
     const [floor] = await db
       .insert(schema.floors)
-      .values({ propertyId: property.id, name: 'RDC', index: 0, width: 100, height: 100 })
+      .values({ propertyId: property.id, name: 'RDC', index: 10, width: 100, height: 100 })
       .returning();
     const [room] = await db
       .insert(schema.rooms)

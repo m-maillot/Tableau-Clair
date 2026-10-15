@@ -1,0 +1,216 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.legend {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.pair > * {
+  min-width: 0;
+}
+.segments {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+.segment {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.on {
+  background: var(--color-blue);
+  color: var(--color-white);
+}
+.select,
+.rowSelect select {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+.position {
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: var(--color-surface);
+}
+.moveRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.arrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.where {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+.rowSelect {
+  flex: 1;
+}
+.rowSelect select {
+  min-height: 44px;
+  background: var(--color-white);
+  font-size: 13px;
+  font-weight: 700;
+}
+.note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+.bad {
+  color: var(--color-danger-fg);
+  font-weight: 700;
+}
+.circuit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 60px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--color-blue);
+  color: var(--color-white);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.circuit strong {
+  display: block;
+  font-size: 15px;
+}
+.circuitSub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: #e8efff;
+}
+.footer {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+.delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-fg);
+  cursor: pointer;
+}
+.delete:disabled {
+  opacity: 0.5;
+}
+
+/* Panneau du mode bureau. */
+.panel {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100vh - 32px);
+  padding: 16px;
+  overflow-y: auto;
+  border-radius: 22px;
+  background: var(--color-white);
+  box-shadow: var(--shadow-floating);
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--color-lime);
+  font-size: 15px;
+  font-weight: 800;
+}
+.titles {
+  flex: 1;
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+.sub {
+  margin: 1px 0 0;
+  font-size: 12px;
+  color: var(--color-muted);
+}

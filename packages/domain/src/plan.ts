@@ -15,6 +15,21 @@ export interface Rect {
   h: number;
 }
 
+/**
+ * Le plan est illimité en pratique : les coordonnées restent bornées à ± `PLAN_WORLD` unités
+ * pour rester des nombres sains en base et à l'écran.
+ */
+export const PLAN_WORLD = 100_000;
+export const WORLD_BOUNDS: Rect = {
+  x: -PLAN_WORLD,
+  y: -PLAN_WORLD,
+  w: PLAN_WORLD * 2,
+  h: PLAN_WORLD * 2,
+};
+
+/** Zone de limites : l'origine vaut 0 quand seule la taille est donnée (ancien canevas). */
+type Bounds = { x?: number; y?: number; w: number; h: number };
+
 /** Plus petite taille d'une pièce, pour qu'elle reste sélectionnable. */
 export const MIN_ROOM_SIZE = 40;
 
@@ -30,9 +45,14 @@ export function containsPoint(rect: Rect, point: Point): boolean {
 }
 
 /** Vrai si `inner` est entièrement dans `outer`. */
-export function rectWithin(outer: { w: number; h: number }, inner: Rect): boolean {
+export function rectWithin(outer: Bounds, inner: Rect): boolean {
+  const ox = outer.x ?? 0;
+  const oy = outer.y ?? 0;
   return (
-    inner.x >= 0 && inner.y >= 0 && inner.x + inner.w <= outer.w && inner.y + inner.h <= outer.h
+    inner.x >= ox &&
+    inner.y >= oy &&
+    inner.x + inner.w <= ox + outer.w &&
+    inner.y + inner.h <= oy + outer.h
   );
 }
 
@@ -54,17 +74,14 @@ export function rectFromCorners(a: Point, b: Point): Rect {
   };
 }
 
-/** Déplace un rectangle sans le laisser sortir du canevas. */
-export function moveRect(
-  rect: Rect,
-  dx: number,
-  dy: number,
-  canvas: { w: number; h: number },
-): Rect {
+/** Déplace un rectangle sans le laisser sortir des limites (le plan entier par défaut). */
+export function moveRect(rect: Rect, dx: number, dy: number, canvas: Bounds = WORLD_BOUNDS): Rect {
+  const ox = canvas.x ?? 0;
+  const oy = canvas.y ?? 0;
   return {
     ...rect,
-    x: clamp(rect.x + dx, 0, canvas.w - rect.w),
-    y: clamp(rect.y + dy, 0, canvas.h - rect.h),
+    x: clamp(rect.x + dx, ox, ox + canvas.w - rect.w),
+    y: clamp(rect.y + dy, oy, oy + canvas.h - rect.h),
   };
 }
 
@@ -79,16 +96,18 @@ export function resizeRect(
   handle: Handle,
   dx: number,
   dy: number,
-  canvas: { w: number; h: number },
+  canvas: Bounds = WORLD_BOUNDS,
   min = MIN_ROOM_SIZE,
 ): Rect {
+  const ox = canvas.x ?? 0;
+  const oy = canvas.y ?? 0;
   const left = handle === 'nw' || handle === 'sw';
   const top = handle === 'nw' || handle === 'ne';
 
   const fixedX = left ? rect.x + rect.w : rect.x;
   const fixedY = top ? rect.y + rect.h : rect.y;
-  const movingX = clamp((left ? rect.x : rect.x + rect.w) + dx, 0, canvas.w);
-  const movingY = clamp((top ? rect.y : rect.y + rect.h) + dy, 0, canvas.h);
+  const movingX = clamp((left ? rect.x : rect.x + rect.w) + dx, ox, ox + canvas.w);
+  const movingY = clamp((top ? rect.y : rect.y + rect.h) + dy, oy, oy + canvas.h);
 
   // La taille minimale se tient côté du coin mobile, jamais en poussant le coin fixe.
   const x = left ? Math.min(movingX, fixedX - min) : fixedX;

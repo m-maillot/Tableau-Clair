@@ -1,6 +1,6 @@
 import { DEFAULT_WIDTH, type ElementKind } from '@tableau-clair/domain';
 import { KIND_LABEL } from './appearance';
-import { KIND_MIME } from './RailRow';
+import { beginDrag, endDrag, KIND_MIME } from './RailRow';
 import styles from './RailPalette.module.css';
 
 /** Types de la palette du mode bureau, dans l'ordre des maquettes. */
@@ -33,20 +33,30 @@ export function RailPalette({ armed, onArm }: RailPaletteProps) {
       <ul className={styles.list}>
         {PALETTE_KINDS.map((kind) => (
           <li key={kind}>
-            <button
-              type="button"
+            <div
+              // Un <button> ne se glisse pas sous Firefox : zone `role="button"`.
+              role="button"
+              tabIndex={0}
               className={`${styles.chip} ${armed === kind ? styles.armed : ''}`}
               aria-pressed={armed === kind}
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.setData(KIND_MIME, kind);
                 event.dataTransfer.effectAllowed = 'copy';
+                beginDrag(DEFAULT_WIDTH[kind]);
               }}
+              onDragEnd={endDrag}
               onClick={() => onArm(armed === kind ? null : kind)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onArm(armed === kind ? null : kind);
+                }
+              }}
             >
               <span>{KIND_LABEL[kind]}</span>
               <span className={styles.width}>{DEFAULT_WIDTH[kind]} mod.</span>
-            </button>
+            </div>
           </li>
         ))}
       </ul>

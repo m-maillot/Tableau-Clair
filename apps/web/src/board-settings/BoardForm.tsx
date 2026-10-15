@@ -160,7 +160,7 @@ export function BoardForm({
         <IconButton label="Retour" icon="chevron-left" onClick={cancel} />
         <div className={styles.titles}>
           <h1 className={styles.title}>{editing ? 'Paramètres du tableau' : 'Nouveau tableau'}</h1>
-          <p className={styles.subtitle}>{propertyName}</p>
+          {propertyName && <p className={styles.subtitle}>{propertyName}</p>}
         </div>
       </header>
 

@@ -1,4 +1,4 @@
-import { planSchema, type Floor, type Room } from '@tableau-clair/contracts';
+import { planSchema, type Floor, type Plan, type Room } from '@tableau-clair/contracts';
 import { eq, schema } from '@tableau-clair/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHarness } from './harness';
@@ -14,11 +14,18 @@ afterAll(async () => {
 
 const url = (propertyId: string, tail = '') => `/api/properties/${propertyId}${tail}`;
 
+/** Le tableau du scénario crée de lui-même le premier étage (« Rez-de-chaussée ») : on le réutilise. */
 async function setup() {
   const s = await h.scenario();
-  const floor = (await h.call(s.owner, 'POST', url(s.property.id, '/floors'), { name: 'RDC' }))
-    .body as Floor;
-  return { ...s, floor };
+  const plan = (await h.call(s.owner, 'GET', url(s.property.id, '/plan'))).body as Plan;
+  return { ...s, floor: plan.floors[0] as Floor };
+}
+
+/** Logement sans aucun tableau, donc sans étage : pour les règles de création d'étage. */
+async function bare() {
+  const owner = await h.createUser();
+  const property = (await h.call(owner, 'POST', '/api/properties', { name: 'Vide' })).body;
+  return { owner, property };
 }
 
 async function withRoom(name = 'Cuisine', rect = { x: 100, y: 100, w: 300, h: 200 }) {
@@ -38,7 +45,7 @@ const fixtureBody = (extra: Record<string, unknown> = {}) => ({
 
 describe('étages', () => {
   it('crée des étages numérotés à la suite, avec un canevas par défaut', async () => {
-    const { owner, property } = await h.scenario();
+    const { owner, property } = await bare();
     const a = (await h.call(owner, 'POST', url(property.id, '/floors'), { name: 'RDC' })).body;
     const b = (await h.call(owner, 'POST', url(property.id, '/floors'), { name: 'Étage' })).body;
     expect(a).toMatchObject({
@@ -80,7 +87,7 @@ describe('étages', () => {
     expect(reordered.status).toBe(200);
     expect(reordered.body.map((f: Floor) => [f.name, f.index])).toEqual([
       ['Combles', 0],
-      ['RDC', 1],
+      ['Rez-de-chaussée', 1],
       ['Étage', 2],
     ]);
 
@@ -94,14 +101,13 @@ describe('étages', () => {
     }
   });
 
-  it('refuse de réduire le plan sous une pièce', async () => {
+  it('réduire le cadrage du plan ne retient aucune pièce (plan illimité)', async () => {
     const { owner, floor } = await withRoom('Salon', { x: 500, y: 100, w: 300, h: 200 });
-    const refused = await h.call(owner, 'PATCH', `/api/floors/${floor.id}`, {
+    const shrunk = await h.call(owner, 'PATCH', `/api/floors/${floor.id}`, {
       width: 600,
       version: 1,
     });
-    expect(refused.status).toBe(422);
-    expect(refused.body).toMatchObject({ code: 'rooms_outside' });
+    expect(shrunk.status).toBe(200);
   });
 
   it('règle l’image de fond et supprime l’ancienne quand elle est remplacée', async () => {
@@ -207,11 +213,19 @@ describe('pièces', () => {
     expect(room).toMatchObject({ name: 'Cuisine', x: 100, y: 100, w: 300, h: 200, version: 1 });
   });
 
-  it('refuse une pièce hors du plan ou trop petite', async () => {
+  it('accepte une pièce loin de l’origine ou en coordonnées négatives, refuse l’extrême ou le trop petit', async () => {
     const { owner, floor } = await setup();
+    const far = await h.call(owner, 'POST', `/api/floors/${floor.id}/rooms`, {
+      name: 'Annexe',
+      x: -1500,
+      y: 3000,
+      w: 300,
+      h: 100,
+    });
+    expect(far.status).toBe(201);
     const out = await h.call(owner, 'POST', `/api/floors/${floor.id}/rooms`, {
       name: 'X',
-      x: 900,
+      x: 99_900,
       y: 0,
       w: 300,
       h: 100,
@@ -270,11 +284,19 @@ describe('pièces', () => {
     expect(clamped).toMatchObject({ x: 200, y: 200 });
   });
 
-  it('refuse un redimensionnement qui sort du plan', async () => {
+  it('redimensionne et déplace librement, sauf aux limites du monde', async () => {
     const { owner, room } = await withRoom();
-    const refused = await h.call(owner, 'PATCH', `/api/rooms/${room.id}`, { w: 5000, version: 1 });
-    expect(refused).toMatchObject({ status: 422, body: { code: 'out_of_bounds' } });
-    const out = await h.call(owner, 'PATCH', `/api/rooms/${room.id}`, { x: 800, version: 1 });
+    const big = await h.call(owner, 'PATCH', `/api/rooms/${room.id}`, { w: 5000, version: 1 });
+    expect(big.status).toBe(200);
+    const moved = await h.call(owner, 'PATCH', `/api/rooms/${room.id}`, {
+      x: -800,
+      version: big.body.version,
+    });
+    expect(moved.status).toBe(200);
+    const out = await h.call(owner, 'PATCH', `/api/rooms/${room.id}`, {
+      x: 99_999,
+      version: moved.body.version,
+    });
     expect(out).toMatchObject({ status: 422, body: { code: 'out_of_bounds' } });
   });
 
@@ -461,8 +483,8 @@ describe('plan complet', () => {
     ]);
   });
 
-  it('est vide pour un logement sans plan', async () => {
-    const { owner, property } = await h.scenario();
+  it('est vide pour un logement sans tableau ni plan', async () => {
+    const { owner, property } = await bare();
     const { body } = await h.call(owner, 'GET', url(property.id, '/plan'));
     expect(body.floors).toEqual([]);
   });
@@ -504,5 +526,82 @@ describe('accès', () => {
     expect(
       (await h.call(viewer, 'POST', `/api/rooms/${room.id}/fixtures`, fixtureBody())).status,
     ).toBe(403);
+  });
+});
+
+describe('tableau sur le plan', () => {
+  it('pose le tableau au centre du premier étage dès sa création, en créant l’étage si besoin', async () => {
+    const { owner, property } = await h.scenario(); // crée un tableau
+    const plan = (await h.call(owner, 'GET', url(property.id, '/plan'))).body as Plan;
+
+    expect(plan.floors).toHaveLength(1);
+    expect(plan.floors[0]).toMatchObject({ name: 'Rez-de-chaussée', width: 1000, height: 700 });
+    expect(plan.floors[0]!.boards).toEqual([
+      expect.objectContaining({ name: 'Tableau principal', x: 500, y: 350 }),
+    ]);
+  });
+
+  it('utilise le premier étage existant et décale les tableaux suivants', async () => {
+    const { owner, property, floor } = await setup();
+    const second = await h.call(owner, 'POST', url(property.id, '/boards'), {
+      name: 'Tableau garage',
+      rowCount: 1,
+      modulesPerRow: 12,
+    });
+    expect(second.status).toBe(201);
+
+    const plan = (await h.call(owner, 'GET', url(property.id, '/plan'))).body as Plan;
+    expect(plan.floors).toHaveLength(1);
+    const { boards } = plan.floors.find((f) => f.id === floor.id)!;
+    expect(boards.map((b) => b.name).sort()).toEqual(['Tableau garage', 'Tableau principal']);
+    // Deux tableaux ne se superposent pas exactement.
+    expect(new Set(boards.map((b) => `${b.x},${b.y}`)).size).toBe(2);
+  });
+
+  it('déplace le tableau sur le plan et refuse un étage étranger', async () => {
+    const { owner, property, floor, board } = await setup();
+    const moved = await h.call(owner, 'PUT', `/api/boards/${board.id}/plan`, {
+      floorId: floor.id,
+      x: -1200.4,
+      y: 80,
+    });
+    expect(moved).toMatchObject({ status: 200, body: { x: -1200, y: 80, floorId: floor.id } });
+    const plan = (await h.call(owner, 'GET', url(property.id, '/plan'))).body as Plan;
+    expect(plan.floors[0]!.boards[0]).toMatchObject({ id: board.id, x: -1200, y: 80 });
+
+    const other = await h.scenario();
+    const foreignFloor = (
+      await h.call(other.owner, 'POST', url(other.property.id, '/floors'), { name: 'X' })
+    ).body as Floor;
+    const refused = await h.call(owner, 'PUT', `/api/boards/${board.id}/plan`, {
+      floorId: foreignFloor.id,
+      x: 0,
+      y: 0,
+    });
+    expect(refused.status).toBe(404);
+  });
+
+  it('respecte les droits : lecteur 403, étranger 404', async () => {
+    const { owner, property, floor, board } = await setup();
+    const viewer = await h.addMember(property.id, 'viewer');
+    const stranger = await h.createUser();
+    const body = { floorId: floor.id, x: 10, y: 10 };
+    expect((await h.call(viewer, 'PUT', `/api/boards/${board.id}/plan`, body)).status).toBe(403);
+    expect((await h.call(stranger, 'PUT', `/api/boards/${board.id}/plan`, body)).status).toBe(404);
+    expect((await h.call(owner, 'PUT', `/api/boards/${board.id}/plan`, body)).status).toBe(200);
+  });
+
+  it('replace au centre un tableau dont l’étage a été supprimé', async () => {
+    const { owner, property, floor, board } = await setup();
+    await h.call(owner, 'PUT', `/api/boards/${board.id}/plan`, { floorId: floor.id, x: 5, y: 5 });
+    const spare = (await h.call(owner, 'POST', url(property.id, '/floors'), { name: 'Étage' }))
+      .body as Floor;
+    await h.call(owner, 'PUT', `/api/boards/${board.id}/plan`, { floorId: spare.id, x: 7, y: 7 });
+    await h.call(owner, 'DELETE', `/api/floors/${spare.id}`);
+
+    const plan = (await h.call(owner, 'GET', url(property.id, '/plan'))).body as Plan;
+    const placed = plan.floors.flatMap((f) => f.boards).find((b) => b.id === board.id);
+    expect(placed).toMatchObject({ x: expect.any(Number), y: expect.any(Number) });
+    expect(plan.floors.find((f) => f.id === floor.id)!.boards.map((b) => b.id)).toContain(board.id);
   });
 });

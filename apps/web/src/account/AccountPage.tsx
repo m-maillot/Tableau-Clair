@@ -60,7 +60,7 @@ export function AccountPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link to="/" className={styles.back} aria-label="Retour à l’accueil">
+        <Link to="/tableaux" className={styles.back} aria-label="Retour aux tableaux">
           <Icon name="chevron-left" size={20} />
         </Link>
         <h1 className={styles.title}>Mon compte</h1>
@@ -77,8 +77,8 @@ export function AccountPage() {
           Mes données
         </h2>
         <p className={styles.muted}>
-          Un fichier JSON avec vos logements, tableaux, plans, liaisons et modèles. Les photos y
-          sont référencées par des liens (accessibles une fois connecté).
+          Un fichier JSON avec vos tableaux, plans, liaisons et modèles. Les photos y sont
+          référencées par des liens (accessibles une fois connecté).
         </p>
         <Button
           variant="secondary"
@@ -159,13 +159,13 @@ export function AccountPage() {
           {account.isPending ? (
             <p className={styles.muted}>Calcul de l’impact…</p>
           ) : deleted.length === 0 ? (
-            <p className={styles.muted}>Aucun logement : seul votre compte est supprimé.</p>
+            <p className={styles.muted}>Aucune donnée : seul votre compte est supprimé.</p>
           ) : (
             <ul className={styles.list}>
               {deleted.map((p) => (
                 <li key={p.id}>
-                  <strong>{p.name}</strong> — {p.boardCount}{' '}
-                  {plural(p.boardCount, 'tableau', 'tableaux')}
+                  {deleted.length > 1 && <strong>{p.name} — </strong>}
+                  {p.boardCount} {plural(p.boardCount, 'tableau', 'tableaux')}, plan et photos
                   {p.otherMembers > 0
                     ? `, ${p.otherMembers} ${plural(p.otherMembers, 'autre personne perd', 'autres personnes perdent')} l’accès`
                     : ''}

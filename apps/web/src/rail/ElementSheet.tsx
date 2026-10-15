@@ -15,6 +15,8 @@ interface ElementSheetProps {
   onMove: (delta: -1 | 1) => void;
   onChangeRow: () => void;
   onDelete: () => void;
+  /** Ouvre le formulaire d'édition complet. */
+  onEdit: () => void;
   onClose: () => void;
   /** `panel` : panneau latéral du mode bureau, au lieu de la feuille basse. */
   variant?: 'sheet' | 'panel';
@@ -62,6 +64,7 @@ export function ElementSheet({
   onMove,
   onChangeRow,
   onDelete,
+  onEdit,
   onClose,
   variant = 'sheet',
 }: ElementSheetProps) {
@@ -77,36 +80,43 @@ export function ElementSheet({
 
   const actions = canEdit ? (
     <div className={styles.actions}>
-      <button
-        type="button"
-        className={styles.square}
-        aria-label="Déplacer à gauche"
-        disabled={busy}
-        onClick={() => onMove(-1)}
-      >
-        <Icon name="arrow-left" size={20} strokeWidth={2.4} />
-      </button>
-      <button
-        type="button"
-        className={styles.square}
-        aria-label="Déplacer à droite"
-        disabled={busy}
-        onClick={() => onMove(1)}
-      >
-        <Icon name="arrow-right" size={20} strokeWidth={2.4} />
-      </button>
-      <button type="button" className={styles.wide} disabled={busy} onClick={onChangeRow}>
-        Changer de rangée
-      </button>
-      <button
-        type="button"
-        className={`${styles.square} ${styles.danger}`}
-        aria-label="Supprimer l’élément"
-        disabled={busy}
-        onClick={onDelete}
-      >
-        <Icon name="trash" size={20} strokeWidth={2.2} />
-      </button>
+      <div className={styles.line}>
+        <button
+          type="button"
+          className={styles.square}
+          aria-label="Déplacer à gauche"
+          disabled={busy}
+          onClick={() => onMove(-1)}
+        >
+          <Icon name="arrow-left" size={20} strokeWidth={2.4} />
+        </button>
+        <button
+          type="button"
+          className={styles.square}
+          aria-label="Déplacer à droite"
+          disabled={busy}
+          onClick={() => onMove(1)}
+        >
+          <Icon name="arrow-right" size={20} strokeWidth={2.4} />
+        </button>
+        <button type="button" className={styles.wide} disabled={busy} onClick={onChangeRow}>
+          Changer de rangée
+        </button>
+      </div>
+      <div className={styles.line}>
+        <button type="button" className={styles.primary} disabled={busy} onClick={onEdit}>
+          Modifier
+        </button>
+        <button
+          type="button"
+          className={`${styles.square} ${styles.danger}`}
+          aria-label="Supprimer l’élément"
+          disabled={busy}
+          onClick={onDelete}
+        >
+          <Icon name="trash" size={20} strokeWidth={2.2} />
+        </button>
+      </div>
     </div>
   ) : undefined;
 

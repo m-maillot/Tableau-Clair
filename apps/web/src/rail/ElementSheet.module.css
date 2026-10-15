@@ -26,7 +26,15 @@
 .actions {
   display: flex;
   flex: 1;
+  flex-direction: column;
   gap: 8px;
+  min-width: 0;
+}
+/* Ligne 1 : déplacer ; ligne 2 : modifier et supprimer. Rien ne dépasse, même en panneau étroit. */
+.line {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
 }
 .square,
 .wide {
@@ -48,6 +56,9 @@
 }
 .wide {
   flex: 1;
+  min-width: 0;
+  padding: 0 10px;
+  white-space: nowrap;
 }
 .danger {
   background: var(--color-danger-bg);
@@ -91,4 +102,18 @@
 }
 .panelActions {
   padding-top: 4px;
+}
+
+.primary {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--color-blue);
+  color: var(--color-white);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
 }

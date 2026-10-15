@@ -232,7 +232,7 @@ describe('circuit d’un disjoncteur', () => {
     await h.call(s.owner, 'DELETE', `/api/elements/${s.breaker.id}`);
     const plan = (await h.call(s.owner, 'GET', `/api/properties/${s.property.id}/plan`))
       .body as Plan;
-    const after = plan.floors[0]!.fixtures.find((f) => f.id === fixture.id);
+    const after = plan.floors.flatMap((f) => f.fixtures).find((f) => f.id === fixture.id);
     expect(after?.link).toEqual({ breakerId: null, status: 'unknown' });
   });
 });

@@ -14,6 +14,7 @@ Spec §7.2, §15.5. Mode d'édition par défaut sur mobile : pas de glisser-dép
 - [x] Collisions et dépassements refusés avec retour visuel (règles du package `domain`)
 - [x] Annuler / rétablir au moins la dernière action
 - [x] Suppression d'un élément
+- Édition complète des champs et confirmation de suppression détaillée : voir l'issue 29 (modifier-supprimer-appareil)
 
 ## Dépendances
 

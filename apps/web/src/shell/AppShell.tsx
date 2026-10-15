@@ -10,7 +10,6 @@ import { SidebarNav } from './SidebarNav';
 import styles from './AppShell.module.css';
 
 const TABS: TabItem[] = [
-  { id: 'home', label: 'Accueil', icon: 'home', href: '/' },
   { id: 'boards', label: 'Tableaux', icon: 'boards', href: '/tableaux' },
   { id: 'plan', label: 'Plan', icon: 'plan', href: '/plan' },
   { id: 'verify', label: 'À vérifier', icon: 'verify', href: '/verifier' },
@@ -20,7 +19,7 @@ function currentTab(pathname: string): string {
   if (pathname.startsWith('/tableaux')) return 'boards';
   if (pathname.startsWith('/plan')) return 'plan';
   if (pathname.startsWith('/verifier')) return 'verify';
-  return 'home';
+  return 'boards';
 }
 
 /** Cadre des écrans connectés : contenu + barre d'onglets mobile, ou sidebar sur bureau. */
@@ -56,13 +55,7 @@ function DesktopShell({ current }: { current: string }) {
 
   return (
     <div className={styles.layout}>
-      <SidebarNav
-        items={TABS}
-        current={current}
-        badge={badge}
-        property={property?.name}
-        account={account}
-      />
+      <SidebarNav items={TABS} current={current} badge={badge} account={account} />
       <div className={styles.content}>
         <OfflineBanner />
         <UnsavedBanner />

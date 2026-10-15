@@ -210,7 +210,7 @@ describe('création', () => {
     renderAt('/tableaux/nouveau');
 
     expect(await screen.findByRole('heading', { name: 'Nouveau tableau' })).toBeInTheDocument();
-    expect(screen.getByText('Maison des Lilas')).toBeInTheDocument();
+    expect(screen.queryByText('Maison des Lilas')).not.toBeInTheDocument();
 
     const submit = screen.getByRole('button', { name: 'Créer le tableau' });
     expect(submit).toBeDisabled();

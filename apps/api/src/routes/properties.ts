@@ -3,7 +3,7 @@ import {
   updatePropertySchema,
   type Property,
 } from '@tableau-clair/contracts';
-import { and, asc, eq, memberships, properties, type Database } from '@tableau-clair/db';
+import { and, asc, eq, memberships, properties, sql, type Database } from '@tableau-clair/db';
 import type { FastifyInstance } from 'fastify';
 import { conflict, parseBody } from '../http';
 import { parseId, propertyAccess, requireRole } from './access';
@@ -11,14 +11,42 @@ import type { ObjectStorage } from '../storage/object-storage';
 import { propertyObjectKeys } from './photos';
 import { toProperty } from './serialize';
 
+/** Nom du logement créé automatiquement (V1 : un seul logement, jamais affiché comme tel). */
+export const DEFAULT_PROPERTY_NAME = 'Mon logement';
+
 export function registerPropertyRoutes(app: FastifyInstance, db: Database, storage: ObjectStorage) {
   app.get('/api/properties', async (request) => {
-    const rows = await db
-      .select({ property: properties, role: memberships.role })
-      .from(memberships)
-      .innerJoin(properties, eq(properties.id, memberships.propertyId))
-      .where(eq(memberships.userId, request.userId))
-      .orderBy(asc(properties.name));
+    const list = () =>
+      db
+        .select({ property: properties, role: memberships.role })
+        .from(memberships)
+        .innerJoin(properties, eq(properties.id, memberships.propertyId))
+        .where(eq(memberships.userId, request.userId))
+        .orderBy(asc(properties.name));
+
+    let rows = await list();
+    if (rows.length === 0) {
+      // V1 : la notion de logement n'est pas exposée. Chaque compte reçoit un logement par défaut,
+      // créé au premier accès ; le modèle reste prêt pour en gérer plusieurs plus tard.
+      await db.transaction(async (tx) => {
+        // Deux requêtes simultanées d'un nouveau compte ne doivent créer qu'un logement.
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${request.userId}))`);
+        const [existing] = await tx
+          .select({ id: memberships.id })
+          .from(memberships)
+          .where(eq(memberships.userId, request.userId))
+          .limit(1);
+        if (existing) return;
+        const [property] = await tx
+          .insert(properties)
+          .values({ name: DEFAULT_PROPERTY_NAME, updatedBy: request.userId })
+          .returning();
+        await tx
+          .insert(memberships)
+          .values({ propertyId: property!.id, userId: request.userId, role: 'owner' });
+      });
+      rows = await list();
+    }
     return rows.map((r) => toProperty(r.property, r.role));
   });
 

@@ -91,3 +91,41 @@
 .floating .header {
   margin-top: 0;
 }
+
+/* Bureau : les feuilles modales deviennent des dialogues centrés (spec §15.5). */
+@media (min-width: 1024px) {
+  .sheet:not(.persistent) {
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: min(560px, calc(100% - 48px));
+    max-height: 88dvh;
+    padding: 24px 28px 28px;
+    border-radius: 32px;
+    transform: translate(-50%, -50%);
+  }
+  .sheet:not(.persistent) .handle {
+    display: none;
+  }
+}
+
+/* Bureau : une feuille persistante devient un panneau à droite (et non une barre sur toute la largeur). */
+@media (min-width: 1024px) {
+  .floating {
+    top: 16px;
+    right: 16px;
+    bottom: auto;
+    left: auto;
+    width: 360px;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* La fiche flottante s'arrête au-dessus d'un éventuel bloc posé en bas de la colonne. */
+  .floating {
+    max-height: calc(100dvh - 32px - var(--side-reserved, 0px) - 12px);
+  }
+}

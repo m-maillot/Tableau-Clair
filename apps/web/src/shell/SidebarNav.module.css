@@ -42,10 +42,11 @@
   font-weight: 600;
   text-decoration: none;
 }
-.link:hover {
+.link:not(.active):hover {
   background: rgba(255, 255, 255, 0.08);
 }
-.active {
+.active,
+.active:hover {
   background: var(--color-lime);
   color: var(--color-ink);
   font-weight: 800;

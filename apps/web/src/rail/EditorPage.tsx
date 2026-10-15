@@ -20,8 +20,10 @@ import {
 import { KIND_LABEL } from './appearance';
 import { AddElementSheet } from './AddElementSheet';
 import { DeleteElementSheet } from './DeleteElementSheet';
+import { EditElementSheet } from './EditElementSheet';
 import { ElementSheet } from './ElementSheet';
 import styles from './EditorPage.module.css';
+import type { ElementChanges } from './history';
 import { RailPalette } from './RailPalette';
 import { RailRow, type DragPayload, type SlotRef } from './RailRow';
 import { RowPickerSheet } from './RowPickerSheet';
@@ -51,6 +53,7 @@ export function EditorPage() {
   const [slot, setSlot] = useState<SlotRef | null>(null);
   const [choosingRow, setChoosingRow] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const [armed, setArmed] = useState<ElementKind | null>(null);
   const [query, setQuery] = useState('');
@@ -84,6 +87,8 @@ export function EditorPage() {
 
   // Arrivée depuis une recherche : le rail se positionne sur l'élément retrouvé.
   const selectedId = selected?.element.id;
+  // Changer de sélection referme le formulaire d'édition.
+  useEffect(() => setEditing(false), [selectedId]);
   useEffect(() => {
     if (!selectedId) return;
     document
@@ -167,6 +172,14 @@ export function EditorPage() {
     }
   };
 
+  /** Enregistre le formulaire ; il se referme seulement si tout est enregistré. */
+  const saveEdit = async (changes: ElementChanges) => {
+    if (!selected) return false;
+    const ok = await actions.update(selected.element, changes);
+    if (ok) setEditing(false);
+    return ok;
+  };
+
   const dropOn = (row: Row, position: number, payload: DragPayload) => {
     if (payload.elementId) {
       const element = data.rows.flatMap((r) => r.elements).find((e) => e.id === payload.elementId);
@@ -193,17 +206,17 @@ export function EditorPage() {
         savedVersion: actions.conflict.saved.version,
         savedAt: actions.conflict.saved.updatedAt,
         rows: compareFields(
-          { rowId: actions.conflict.mine.rowId, position: actions.conflict.mine.position },
-          {
-            rowId: actions.conflict.saved.rowId,
-            position: actions.conflict.saved.position,
-          },
+          actions.conflict.changes
+            ? { ...actions.conflict.changes }
+            : { rowId: actions.conflict.mine.rowId, position: actions.conflict.mine.position },
+          { ...actions.conflict.saved },
           (key, value) => {
             if (key === 'rowId') {
               const row = data.rows.find((r) => r.id === value);
               return row ? `Rangée ${row.index + 1}` : '—';
             }
-            return `module ${Number(value) + 1}`;
+            if (key === 'position') return `module ${Number(value) + 1}`;
+            return value === null || value === undefined || value === '' ? '—' : String(value);
           },
         ),
         keep: () => void actions.keepConflict(),
@@ -348,7 +361,19 @@ export function EditorPage() {
 
         {desktop && (
           <div className={styles.side}>
-            {selected ? (
+            {selected && editing ? (
+              <EditElementSheet
+                variant="panel"
+                board={data}
+                element={selected.element}
+                propertyId={data.propertyId}
+                canEdit={canEdit}
+                busy={actions.busy}
+                onSave={saveEdit}
+                onCancel={() => setEditing(false)}
+                onDelete={() => setDeleting(true)}
+              />
+            ) : selected ? (
               <ElementSheet
                 variant="panel"
                 element={selected.element}
@@ -359,6 +384,7 @@ export function EditorPage() {
                 onMove={(delta) => void actions.move(selected.element, delta)}
                 onChangeRow={() => setChoosingRow(true)}
                 onDelete={() => setDeleting(true)}
+                onEdit={() => setEditing(true)}
                 onClose={() => setParams({}, { replace: true })}
               />
             ) : (
@@ -370,8 +396,21 @@ export function EditorPage() {
         )}
       </div>
 
+      {!desktop && editing && (
+        <EditElementSheet
+          board={data}
+          element={selected?.element ?? null}
+          propertyId={data.propertyId}
+          canEdit={canEdit}
+          busy={actions.busy}
+          onSave={saveEdit}
+          onCancel={() => setEditing(false)}
+          onDelete={() => setDeleting(true)}
+        />
+      )}
+
       <ElementSheet
-        element={desktop ? null : (selected?.element ?? null)}
+        element={desktop || editing ? null : (selected?.element ?? null)}
         propertyId={data.propertyId}
         rowIndex={selected?.row.index ?? 0}
         canEdit={canEdit}
@@ -379,6 +418,7 @@ export function EditorPage() {
         onMove={(delta) => selected && void actions.move(selected.element, delta)}
         onChangeRow={() => setChoosingRow(true)}
         onDelete={() => setDeleting(true)}
+        onEdit={() => setEditing(true)}
         onClose={() => setParams({}, { replace: true })}
       />
 

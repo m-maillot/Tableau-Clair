@@ -20,7 +20,7 @@ async function addPlan(
 ) {
   const [floor] = await h.db
     .insert(schema.floors)
-    .values({ propertyId, name: names.floor ?? 'RDC', index: 0, width: 100, height: 100 })
+    .values({ propertyId, name: names.floor ?? 'RDC', index: 10, width: 100, height: 100 })
     .returning();
   const [room] = await h.db
     .insert(schema.rooms)

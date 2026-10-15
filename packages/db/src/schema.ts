@@ -208,6 +208,16 @@ export const boards = pgTable(
     rows: integer('rows').notNull(),
     modulesPerRow: integer('modules_per_row').notNull(),
     notes: text('notes'),
+    /**
+     * Emplacement du tableau sur le plan (il y figure comme un équipement). Sans étage, `plan_x` et
+     * `plan_y` sont ignorés : l'étage supprimé libère le tableau (`set null`) et le plan le replace
+     * alors au centre.
+     */
+    planFloorId: uuid('plan_floor_id').references((): AnyPgColumn => floors.id, {
+      onDelete: 'set null',
+    }),
+    planX: doublePrecision('plan_x'),
+    planY: doublePrecision('plan_y'),
   },
   (t) => [
     index('boards_property_idx').on(t.propertyId),

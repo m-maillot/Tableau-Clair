@@ -3,10 +3,8 @@ import { Link } from 'react-router';
 import { useSession } from '../auth/session';
 import { Button, Icon } from '../ui';
 import { BoardCard } from './BoardCard';
-import { FirstProperty } from './FirstProperty';
 import { greetingName, plural } from './format';
 import styles from './HomePage.module.css';
-import { PropertyPicker } from './PropertyPicker';
 import {
   MIN_SEARCH_LENGTH,
   useBoards,
@@ -22,7 +20,7 @@ import { SearchResults } from './SearchResults';
 export function HomePage() {
   const { session } = useSession();
   const properties = useProperties();
-  const [selected, select] = useSelectedProperty(properties.data);
+  const [selected] = useSelectedProperty(properties.data);
   const boards = useBoards(selected?.id);
   const overview = useOverview(selected?.id);
 
@@ -38,14 +36,7 @@ export function HomePage() {
     <header className={styles.header}>
       <div>
         <h1 className={styles.greeting}>Bonjour, {name}</h1>
-        {selected && properties.data && (
-          <PropertyPicker
-            properties={properties.data}
-            selected={selected}
-            boardCount={overview.data?.boardCount ?? boards.data?.length}
-            onSelect={select}
-          />
-        )}
+        <p className={styles.tagline}>Quel disjoncteur couper ? Retrouvez-le ici.</p>
       </div>
       <Link to="/compte" aria-label="Mon compte" className={styles.avatarLink}>
         <span className={styles.avatar} role="img" aria-label={`Compte de ${name}`}>
@@ -80,10 +71,15 @@ export function HomePage() {
   }
 
   if (!selected) {
+    // Le logement par défaut est créé par le serveur : son absence est un incident, pas une étape.
     return (
       <main className={styles.page}>
         {header}
-        <FirstProperty onCreated={select} />
+        <div className={styles.errorBox} role="alert">
+          <strong>Impossible de préparer votre espace</strong>
+          <p>Vérifiez votre connexion, puis réessayez.</p>
+          <Button onClick={() => void properties.refetch()}>Réessayer</Button>
+        </div>
       </main>
     );
   }
@@ -147,9 +143,11 @@ export function HomePage() {
               <h2 id="boards-title" className={styles.sectionTitle}>
                 Tableaux
               </h2>
-              <Link to="/tableaux" className={styles.link}>
-                Voir tout
-              </Link>
+              {boards.data && boards.data.length > 0 && (
+                <Link to="/tableaux/nouveau" className={styles.link}>
+                  Ajouter un tableau
+                </Link>
+              )}
             </div>
 
             {boards.isError ? (
@@ -163,8 +161,12 @@ export function HomePage() {
             ) : boards.data.length === 0 ? (
               <div className={styles.emptyBoards}>
                 <p>Aucun tableau pour l'instant.</p>
+                <p className={styles.emptyHint}>
+                  Décrivez votre tableau électrique, rangée par rangée, pour retrouver chaque
+                  disjoncteur.
+                </p>
                 <Link to="/tableaux/nouveau" className={styles.emptyAction}>
-                  Ajouter un tableau
+                  Créer mon premier tableau
                 </Link>
               </div>
             ) : (

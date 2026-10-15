@@ -27,6 +27,7 @@ import { minRowCapacity, setRowCapacity } from '@tableau-clair/domain';
 import type { FastifyInstance } from 'fastify';
 import { conflict, notFound, parseBody, unprocessable } from '../http';
 import { boardAccess, parseId, propertyAccess, requireRole } from './access';
+import { centerSpot } from './board-plan';
 import { loadBoard, loadRails } from './board-loader';
 import { toBoardSummary } from './serialize';
 
@@ -108,6 +109,8 @@ export function registerBoardRoutes(app: FastifyInstance, db: Database) {
           rows: input.rowCount,
           modulesPerRow: input.modulesPerRow,
           notes: input.notes ?? null,
+          // Règle : un tableau est aussi un équipement du plan, posé au centre à sa création.
+          ...(await centerSpot(tx, propertyId, request.userId)),
           updatedBy: request.userId,
         })
         .returning();
@@ -260,6 +263,7 @@ export function registerBoardRoutes(app: FastifyInstance, db: Database) {
           rows: board.rows,
           modulesPerRow: board.modulesPerRow,
           notes: board.notes,
+          ...(await centerSpot(tx, board.propertyId, request.userId)),
           updatedBy: request.userId,
         })
         .returning();

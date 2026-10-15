@@ -1,6 +1,6 @@
 # Tableau Clair — Récapitulatif design (handoff)
 
-Maquettes : https://claude.ai/artifact/XCVWg2AM1MRKCnHLmdte8A (canevas Design, 17 écrans).
+Maquettes : https://claude.ai/artifact/XCVWg2AM1MRKCnHLmdte8A (canevas Design, 27 écrans).
 Référence fonctionnelle : la spec v1.0 (§ cités ci-dessous). Ce document décrit **ce que montrent les maquettes** pour servir de base au découpage en issues et au développement du front (React + Vite, éditeur en SVG/DOM).
 
 > Les maquettes sont statiques : les interactions décrites en « Comportement » sont l'intention, pas encore prototypée.
@@ -129,13 +129,29 @@ Gabarit unique : pastille d'icône (lime = invitation à agir, bleu clair = neut
 ### 3.16 Installation PWA (`PWA`) (§10)
 Feuille d'invitation (icône, avantages, Installer / Plus tard, astuce iPhone) et bannière « Nouvelle version disponible · Mettre à jour ». Manifeste et service worker (mise en cache du dernier état lu) à implémenter côté front.
 
+### 3.17 Modifier un appareil (`ModifierAppareil`) (§7.2, §5)
+Feuille haute : rail réduit en haut (appareil sélectionné lime + contour), puis en-tête (pastille de calibre, type, position, dernière modification) et zone scrollable : libellé, calibre (chips), courbe et pôles (segments), différentiel en amont (liste), position (← →, rangée, largeur avec − / + ; message « Le module 5 est occupé : largeur maximale 1 »), câbles sortants, section, marque, modèle, notes, photo, carte bleue « N équipements alimentés · x vérifiés · y supposés · z inconnus » vers `Fiche`. Barre fixe : Supprimer (icône danger) · Annuler · Enregistrer. Les champs varient selon le type (§6) ; seul le disjoncteur est dessiné.
+
+### 3.18 Supprimer l'appareil (`SupprAppareil`, `SupprAppareilBureau`) (§5)
+Mobile : feuille basse ; bureau : dialogue. Contenu : « Supprimer « libellé » ? », ce qui change (module libéré ; N équipements passent à « inconnue », liste avec « + n autres »), bandeau orange « Aucun équipement n'est supprimé », bouton danger + Annuler. Pas de saisie du nom (contrairement au tableau).
+
+### 3.19 Variantes bureau (`ConnexionBureau`, `AccueilBureau`, `PlanBureau`, `VerifierBureau`, `SupprTableauBureau`, `ConflitBureau`)
+- Mise en page fluide (flex-wrap), sidebar sombre commune à tous les écrans de l'app.
+- Connexion : panneau bleu d'accroche (rail illustré) + formulaire.
+- Accueil : 3 indicateurs, grille de tableaux + « Ajouter un tableau », carte « À vérifier ».
+- Plan : plan large (coordonnées en %), contrôle du fond (opacité, verrouillage), palette d'équipements et panneau du circuit sélectionné avec l'action « Je viens de le couper ».
+- À vérifier : filtres en pastilles, cartes en grille 2 colonnes.
+- Dialogues (suppression tableau/appareil, conflit) : modale centrée sur fond `rgba(13,27,61,.5)`, `role="dialog"` `aria-modal`.
+- Pas de variante dédiée : Ajout, Fiche, Modifier (couverts par la palette et le panneau de l'éditeur bureau), états hors ligne / chargement / vides / erreurs / PWA (même gabarit, plus large).
+
 ## 4. Navigation
 
 ```
 Connexion → Accueil
 Accueil ── Tableaux → Éditeur ── paramètres → Paramètres du tableau → Supprimer
                           ├─ module libre → Ajout → Éditeur
-                          └─ élément → Fiche → Plan
+                          └─ élément → Modifier ── Supprimer l'appareil
+                                   └─ Fiche → Plan
         ── Plan
         ── À vérifier → (Plan | Fiche)
 ```
@@ -143,7 +159,6 @@ Barre d'onglets mobile : Accueil · Tableaux · Plan · À vérifier. Compte / e
 
 ## 5. Ce qui n'est pas encore dessiné
 
-- Suppression d'un disjoncteur avec équipements liés → confirmation « passent à inconnu » (§5).
 - Formulaire « Autre appareil » et enregistrement du modèle personnalisé (§7.3).
 - Fiche d'équipement sur le plan et liaison depuis l'équipement (§7.4).
 - Photos (tableau, élément, équipement) : prise, aperçu, URL signées (§9).

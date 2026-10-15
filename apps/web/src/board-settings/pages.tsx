@@ -1,7 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router';
-import { useBoard, useBoards, useProperties, useSelectedProperty } from '../home/queries';
-import { BoardCard } from '../home/BoardCard';
-import { Button, EmptyState, ErrorState, LoadingState } from '../ui';
+import { useBoard, useProperties, useSelectedProperty } from '../home/queries';
+import { ErrorState } from '../ui';
 import { BoardForm } from './BoardForm';
 import styles from './pages.module.css';
 
@@ -15,21 +14,21 @@ function Status({ children, role = 'status' }: { children: string; role?: 'statu
   );
 }
 
-/** `/tableaux/nouveau` : création, dans le logement actif. */
+/** `/tableaux/nouveau` : création d'un tableau (dans le logement par défaut). */
 export function NewBoardPage() {
   const navigate = useNavigate();
   const properties = useProperties();
   const [property] = useSelectedProperty(properties.data);
 
   if (properties.isPending) return <Status>Chargement…</Status>;
-  if (properties.isError) return <Status role="alert">Impossible de charger vos logements.</Status>;
-  if (!property) {
+  if (properties.isError || !property) {
     return (
       <main className={styles.page}>
-        <p className={styles.status}>Créez d'abord un logement pour y ajouter un tableau.</p>
-        <Link to="/" className={styles.link}>
-          Retour à l'accueil
-        </Link>
+        <ErrorState
+          title="Impossible de préparer votre espace."
+          text="Vérifiez votre connexion, puis réessayez."
+          onRetry={() => void properties.refetch()}
+        />
       </main>
     );
   }
@@ -37,8 +36,8 @@ export function NewBoardPage() {
   return (
     <BoardForm
       propertyId={property.id}
-      propertyName={property.name}
-      onCancel={() => navigate('/')}
+      propertyName=""
+      onCancel={() => navigate('/tableaux')}
       onSaved={(board) => navigate(`/tableaux/${board.id}`, { replace: true })}
     />
   );
@@ -81,57 +80,5 @@ export function BoardSettingsPage() {
       onDeleted={() => navigate('/tableaux', { replace: true })}
       onReload={() => void board.refetch()}
     />
-  );
-}
-
-/** `/tableaux` : liste des tableaux du logement actif. */
-export function BoardsPage() {
-  const properties = useProperties();
-  const [property] = useSelectedProperty(properties.data);
-  const boards = useBoards(property?.id);
-
-  return (
-    <main className={styles.page}>
-      <div className={styles.headerRow}>
-        <h1 className={styles.heading}>Tableaux</h1>
-        <Link to="/tableaux/nouveau" className={styles.add}>
-          Ajouter un tableau
-        </Link>
-      </div>
-      {property && <p className={styles.subtitle}>{property.name}</p>}
-
-      {boards.isError && (
-        <ErrorState
-          title="Impossible de charger les tableaux."
-          text="Vérifiez votre connexion, puis réessayez."
-          onRetry={() => void boards.refetch()}
-        />
-      )}
-      {(properties.isPending || boards.isPending) && !boards.isError && (
-        <LoadingState label="Chargement…" rows={3} />
-      )}
-      {boards.data && boards.data.length === 0 && (
-        <EmptyState
-          icon="boards"
-          tone="invite"
-          title="Aucun tableau pour l'instant."
-          text="Décrivez votre tableau électrique, rangée par rangée."
-          action={
-            <Link to="/tableaux/nouveau">
-              <Button>Ajouter un tableau</Button>
-            </Link>
-          }
-        />
-      )}
-      {boards.data && boards.data.length > 0 && (
-        <ul className={styles.list}>
-          {boards.data.map((board) => (
-            <li key={board.id}>
-              <BoardCard board={board} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
   );
 }

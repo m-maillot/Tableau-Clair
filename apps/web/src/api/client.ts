@@ -74,7 +74,11 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
     response = await fetch(path, {
       credentials: 'same-origin',
       ...init,
-      headers: { 'content-type': 'application/json', ...init.headers },
+      // Sans corps, pas d'en-tête JSON : Fastify refuse un DELETE « JSON » vide (400).
+      headers: {
+        ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...init.headers,
+      },
     });
   } catch (error) {
     throw new NetworkError(error);
@@ -351,4 +355,17 @@ export async function deleteAccount(confirm: string): Promise<void> {
   if (!response.ok) throw await failure(response);
   clearOfflineData();
   clearSynced();
+}
+
+// --- Tableau posé sur le plan --------------------------------------------------------------------------------
+
+export async function setBoardPlan(
+  boardId: string,
+  input: { floorId: string; x: number; y: number },
+): Promise<void> {
+  const response = await request(`/api/boards/${boardId}/plan`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw await failure(response);
 }

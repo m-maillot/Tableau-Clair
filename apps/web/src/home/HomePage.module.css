@@ -169,3 +169,14 @@
   text-decoration: none;
   color: inherit;
 }
+
+.tagline {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.emptyHint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}

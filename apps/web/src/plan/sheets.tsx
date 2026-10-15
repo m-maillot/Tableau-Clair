@@ -1,13 +1,13 @@
-import type { Fixture, PlanBreaker, PlanFloor, Room } from '@tableau-clair/contracts';
+import type { Fixture, PlanBoard, PlanBreaker, PlanFloor, Room } from '@tableau-clair/contracts';
 import { LIMITS } from '@tableau-clair/contracts';
-import { MIN_ROOM_SIZE, type FixtureKind, type Verification } from '@tableau-clair/domain';
+import type { FixtureKind, Verification } from '@tableau-clair/domain';
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { PhotoField } from '../board-settings/PhotoField';
 import { plural } from '../home/format';
 import { photoUrl } from '../api/client';
 import { breakerName, placeOf } from '../link/place';
 import linkStyles from '../link/link.module.css';
-import { BottomSheet, Button, Icon, Stepper, StatusChip, TextField, TypeChip } from '../ui';
+import { BottomSheet, Button, Icon, StatusChip, TextField, TypeChip } from '../ui';
 import { FIXTURE_KIND_ICON, FIXTURE_KIND_LABEL, FIXTURE_KINDS_ORDER } from './fixture-kinds';
 import styles from './sheets.module.css';
 
@@ -202,8 +202,8 @@ interface FixtureSheetProps {
   breaker: PlanBreaker | undefined;
   canEdit: boolean;
   onClose: () => void;
-  onRename: (label: string) => void;
-  onKind: (kind: FixtureKind) => void;
+  /** Enregistre les champs modifiés du formulaire (libellé, type) d'un seul coup. */
+  onSave: (changes: { label?: string; kind?: FixtureKind }) => void;
   onNudge: (dx: number, dy: number) => void;
   onDelete: () => void;
   onShowCircuit: (breakerId: string) => void;
@@ -220,9 +220,33 @@ const STATUSES: { value: Verification; label: string }[] = [
 ];
 
 export function FixtureSheet(props: FixtureSheetProps) {
+  if (!props.fixture) return null;
+  return <FixtureForm key={props.fixture.id} {...props} fixture={props.fixture} />;
+}
+
+function FixtureForm(props: FixtureSheetProps & { fixture: Fixture }) {
   const { fixture, room, floor, breaker, canEdit } = props;
-  if (!fixture) return null;
   const linked = fixture.link?.breakerId;
+  const [label, setLabel] = useState(fixture.label);
+  const [kind, setKind] = useState(fixture.kind);
+  // Quand l'équipement change côté serveur (enregistrement, conflit), le brouillon le rejoint.
+  // Un simple déplacement (x, y) ne touche pas au brouillon : le focus des flèches reste.
+  const [synced, setSynced] = useState({ label: fixture.label, kind: fixture.kind });
+  if (synced.label !== fixture.label || synced.kind !== fixture.kind) {
+    setSynced({ label: fixture.label, kind: fixture.kind });
+    setLabel(fixture.label);
+    setKind(fixture.kind);
+  }
+  const trimmed = label.trim();
+  const dirty = trimmed !== fixture.label || kind !== fixture.kind;
+  const canSave = canEdit && dirty && trimmed.length > 0;
+  const save = () => {
+    if (!canSave) return;
+    props.onSave({
+      ...(trimmed !== fixture.label ? { label: trimmed } : {}),
+      ...(kind !== fixture.kind ? { kind } : {}),
+    });
+  };
 
   return (
     <BottomSheet
@@ -232,6 +256,13 @@ export function FixtureSheet(props: FixtureSheetProps) {
       onClose={props.onClose}
       title={fixture.label}
       description={[room?.name, floor?.name].filter(Boolean).join(' · ')}
+      footer={
+        canEdit ? (
+          <Button size="lg" fullWidth disabled={!canSave} onClick={save}>
+            Enregistrer
+          </Button>
+        ) : undefined
+      }
     >
       <div className={styles.body}>
         <div className={styles.link}>
@@ -297,14 +328,26 @@ export function FixtureSheet(props: FixtureSheetProps) {
 
         {canEdit && (
           <>
-            <CommitField label="Libellé" value={fixture.label} onCommit={props.onRename} />
+            <TextField
+              label="Libellé"
+              value={label}
+              maxLength={LIMITS.maxNameLength}
+              autoComplete="off"
+              onChange={(event) => setLabel(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  save();
+                }
+              }}
+            />
             <div className={styles.kinds} role="group" aria-label="Type d'équipement">
-              {FIXTURE_KINDS_ORDER.map((kind) => (
+              {FIXTURE_KINDS_ORDER.map((option) => (
                 <TypeChip
-                  key={kind}
-                  label={FIXTURE_KIND_LABEL[kind]}
-                  selected={fixture.kind === kind}
-                  onClick={() => props.onKind(kind)}
+                  key={option}
+                  label={FIXTURE_KIND_LABEL[option]}
+                  selected={kind === option}
+                  onClick={() => setKind(option)}
                 />
               ))}
             </div>
@@ -328,9 +371,8 @@ interface RoomSheetProps {
   floor: PlanFloor | undefined;
   canEdit: boolean;
   onClose: () => void;
-  onRename: (name: string) => void;
-  onResize: (change: { w?: number; h?: number }) => void;
-  onNudge: (dx: number, dy: number) => void;
+  /** Ouvre la modale de renommage ; position et taille se règlent directement sur le plan. */
+  onEdit: () => void;
   onDelete: () => void;
   /** Disjoncteurs du logement : pour dire lesquels couper dans cette pièce. */
   breakers: PlanBreaker[];
@@ -338,8 +380,12 @@ interface RoomSheetProps {
 }
 
 export function RoomSheet(props: RoomSheetProps) {
+  if (!props.room) return null;
+  return <RoomForm key={props.room.id} {...props} room={props.room} />;
+}
+
+function RoomForm(props: RoomSheetProps & { room: Room }) {
   const { room, floor, canEdit } = props;
-  if (!room) return null;
   const inside = floor?.fixtures.filter((f) => f.roomId === room.id) ?? [];
   const count = inside.length;
   // Un disjoncteur par ligne, avec ce qu'il alimente ici ; les équipements sans lien sont comptés à part.
@@ -359,6 +405,18 @@ export function RoomSheet(props: RoomSheetProps) {
       onClose={props.onClose}
       title={room.name}
       description={`${count} ${plural(count, 'équipement', 'équipements')}`}
+      footer={
+        canEdit ? (
+          <div className={styles.actions} style={{ flex: 1 }}>
+            <Button size="lg" fullWidth onClick={props.onEdit}>
+              Modifier
+            </Button>
+            <Button size="lg" variant="danger-soft" icon="trash" onClick={props.onDelete}>
+              Supprimer
+            </Button>
+          </div>
+        ) : undefined
+      }
     >
       {count > 0 && (
         <div className={styles.body}>
@@ -394,41 +452,41 @@ export function RoomSheet(props: RoomSheetProps) {
           )}
         </div>
       )}
-      {canEdit ? (
-        <div className={styles.body}>
-          <CommitField label="Nom de la pièce" value={room.name} onCommit={props.onRename} />
-          <div className={styles.sizes}>
-            <div>
-              <p className={styles.legend}>Largeur</p>
-              <Stepper
-                label="Largeur de la pièce"
-                value={room.w}
-                step={NUDGE}
-                min={MIN_ROOM_SIZE}
-                max={floor ? floor.width - room.x : undefined}
-                onChange={(w) => props.onResize({ w })}
-              />
-            </div>
-            <div>
-              <p className={styles.legend}>Hauteur</p>
-              <Stepper
-                label="Hauteur de la pièce"
-                value={room.h}
-                step={NUDGE}
-                min={MIN_ROOM_SIZE}
-                max={floor ? floor.height - room.y : undefined}
-                onChange={(h) => props.onResize({ h })}
-              />
-            </div>
-          </div>
-          <div className={styles.actions}>
-            <Nudge onMove={props.onNudge} />
-            <Button variant="danger-soft" icon="trash" onClick={props.onDelete}>
-              Supprimer
-            </Button>
-          </div>
-        </div>
-      ) : null}
+    </BottomSheet>
+  );
+}
+
+// --- Tableau sélectionné sur le plan --------------------------------------------------------------------------
+
+interface BoardSheetProps {
+  board: PlanBoard | null;
+  canEdit: boolean;
+  onClose: () => void;
+  onOpen: (boardId: string) => void;
+}
+
+/** Un tableau est un équipement du plan : on le place où l'on veut, on l'ouvre depuis sa fiche. */
+export function BoardSheet({ board, canEdit, onClose, onOpen }: BoardSheetProps) {
+  if (!board) return null;
+  return (
+    <BottomSheet
+      open
+      modal={false}
+      floating
+      onClose={onClose}
+      title={board.name}
+      description={board.location ?? 'Tableau électrique'}
+      footer={
+        <Button size="lg" fullWidth icon="boards" onClick={() => onOpen(board.id)}>
+          Ouvrir le tableau
+        </Button>
+      }
+    >
+      <p className={styles.legend}>
+        {canEdit
+          ? 'Faites glisser le tableau sur le plan pour le placer là où il se trouve.'
+          : 'Emplacement du tableau sur le plan.'}
+      </p>
     </BottomSheet>
   );
 }
@@ -532,8 +590,8 @@ export function NameSheet({
           autoFocus
           onChange={(event) => setName(event.target.value)}
         />
-        <div className={styles.actions}>
-          <Button variant="secondary" size="lg" onClick={onClose}>
+        <div className={styles.split}>
+          <Button variant="secondary" size="lg" fullWidth onClick={onClose}>
             Annuler
           </Button>
           <Button type="submit" size="lg" fullWidth disabled={!name.trim()}>
@@ -663,10 +721,11 @@ export function FloorSheet(props: FloorSheetProps) {
                 checked={floor.backgroundLocked}
                 onChange={(event) => props.onBackground({ backgroundLocked: event.target.checked })}
               />
-              Verrouiller l’image (évite de la déplacer en dessinant)
+              Verrouiller l’image (retire « Déplacer l’image »)
             </label>
             <p className={styles.hint}>
-              Déverrouillée, l’image se déplace en la faisant glisser sur le plan.
+              Déverrouillée, utilisez « Déplacer l’image » au-dessus du plan, puis faites-la
+              glisser.
             </p>
             <Button
               size="md"

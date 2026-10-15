@@ -142,7 +142,17 @@ function seed() {
       link: null,
     },
   ];
-  return { floors, rooms, fixtures };
+  const boards = [
+    {
+      id: ID(701),
+      floorId: ID(201),
+      name: 'Tableau principal',
+      location: 'Garage',
+      x: 700,
+      y: 500,
+    },
+  ];
+  return { floors, rooms, fixtures, boards };
 }
 
 type State = ReturnType<typeof seed>;
@@ -150,7 +160,7 @@ type State = ReturnType<typeof seed>;
 function createServer(
   options: { role?: 'owner' | 'viewer'; empty?: boolean; withBackground?: boolean } = {},
 ) {
-  const state: State = options.empty ? { floors: [], rooms: [], fixtures: [] } : seed();
+  const state: State = options.empty ? { floors: [], rooms: [], fixtures: [], boards: [] } : seed();
   if (options.withBackground) {
     Object.assign(state.floors[0]!, {
       backgroundImageId: ID(900),
@@ -198,6 +208,9 @@ function createServer(
           ...f,
           propertyId: PROPERTY_ID,
           rooms: floorRooms.map((r) => ({ ...audit, ...r })),
+          boards: state.boards
+            .filter((b) => b.floorId === f.id)
+            .map((b) => ({ id: b.id, name: b.name, location: b.location, x: b.x, y: b.y })),
           fixtures: state.fixtures
             .filter((x) => ids.has(x.roomId))
             .map((x) => ({ ...audit, ...x })),
@@ -329,6 +342,12 @@ function createServer(
       };
       state.fixtures.push(fixture);
       return json(entity(fixture), 201);
+    }
+    m = url.match(/^\/api\/boards\/([^/]+)\/plan$/);
+    if (m && method === 'PUT') {
+      const board = state.boards.find((b) => b.id === m![1])!;
+      Object.assign(board, { floorId: body!.floorId, x: body!.x, y: body!.y });
+      return json({ id: board.id, floorId: board.floorId, x: board.x, y: board.y });
     }
     m = url.match(/^\/api\/fixtures\/([^/]+)\/link$/);
     if (m && method === 'PUT') {
@@ -526,6 +545,11 @@ describe('équipement sélectionné', () => {
 
     await userEvent.click(within(sheet).getByRole('button', { name: 'Voir le circuit' }));
     expect(screen.getByTestId('location')).toHaveTextContent(`breaker=${BREAKER}`);
+    // La fiche se ferme pour laisser voir le plan et le circuit mis en évidence.
+    expect(screen.queryByRole('region', { name: 'Prise plan de travail' })).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Retirer la mise en évidence du circuit' }),
+    ).toBeInTheDocument();
   });
 
   it('indique « à identifier » quand il n’a pas de disjoncteur', async () => {
@@ -552,11 +576,34 @@ describe('équipement sélectionné', () => {
     expect(await screen.findByRole('button', { name: /Suspension/ })).toBeInTheDocument();
   });
 
+  it('enregistre libellé et type en une seule requête avec le bouton', async () => {
+    const server = createServer();
+    renderPlan();
+    const sheet = await open(/Plafonnier/);
+    const field = within(sheet).getByLabelText('Libellé');
+    await userEvent.clear(field);
+    await userEvent.type(field, 'Suspension');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Appareil dédié' }));
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Enregistrer' }));
+
+    await waitFor(() => expect(server.writes()).toHaveLength(1));
+    expect(server.lastWrite()).toMatchObject({
+      method: 'PATCH',
+      body: { label: 'Suspension', kind: 'appliance', version: 1 },
+    });
+  });
+
   it('change son type', async () => {
     const server = createServer();
     renderPlan();
     const sheet = await open(/Prise plan de travail/);
+    const save = within(sheet).getByRole('button', { name: 'Enregistrer' });
+    expect(save).toBeDisabled();
+
     await userEvent.click(within(sheet).getByRole('button', { name: 'Appareil dédié' }));
+    // Rien n'est envoyé tant que la modification n'est pas validée.
+    expect(server.writes()).toHaveLength(0);
+    await userEvent.click(save);
     await waitFor(() => expect(server.lastWrite()!.body).toMatchObject({ kind: 'appliance' }));
   });
 
@@ -681,6 +728,7 @@ describe('liaison avec un disjoncteur', () => {
 
     await userEvent.click(within(sheet).getByRole('button', { name: /Éclairage RDC · 10 A/ }));
     expect(screen.getByTestId('location')).toHaveTextContent(`breaker=${ID(401)}`);
+    expect(screen.queryByRole('region', { name: 'Cuisine' })).not.toBeInTheDocument();
   });
 
   it('signale les équipements d’une pièce sans disjoncteur', async () => {
@@ -843,6 +891,216 @@ describe('ajout d’équipements', () => {
   });
 });
 
+describe('tableau sur le plan', () => {
+  it('apparaît comme un équipement, avec sa fiche et un accès au tableau', async () => {
+    createServer();
+    renderPlan();
+    const marker = await screen.findByRole('button', { name: 'Tableau Tableau principal' });
+    await userEvent.click(marker);
+
+    const sheet = await screen.findByRole('region', { name: 'Tableau principal' });
+    expect(sheet).toHaveAccessibleDescription('Garage');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Ouvrir le tableau' }));
+    expect(screen.getByTestId('location')).toHaveTextContent(`/tableaux/${ID(701)}`);
+  });
+
+  it('se place n’importe où par glisser-déposer, y compris hors d’une pièce', async () => {
+    const server = createServer();
+    renderPlan();
+    const svg = await canvas();
+    const marker = await screen.findByRole('button', { name: 'Tableau Tableau principal' });
+
+    fireEvent.pointerDown(marker, { pointerId: 1, clientX: 700, clientY: 500 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 900, clientY: 620 });
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 900, clientY: 620 });
+
+    await waitFor(() =>
+      expect(server.lastWrite()).toMatchObject({
+        method: 'PUT',
+        url: `/api/boards/${ID(701)}/plan`,
+        body: { floorId: ID(201), x: 900, y: 620 },
+      }),
+    );
+  });
+});
+
+describe('liste des pièces', () => {
+  it('mobile : un bouton ouvre la liste, un choix sélectionne la pièce et la recentre', async () => {
+    createServer();
+    renderPlan();
+    const svg = await canvas();
+    await userEvent.click(await screen.findByRole('button', { name: 'Pièces' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Pièces' });
+    expect(
+      within(dialog).getByRole('button', { name: /Cuisine.*2 équipements/ }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Salon.*1 équipement/ })).toBeInTheDocument();
+    // Seules les pièces de l'étage affiché.
+    expect(within(dialog).queryByRole('button', { name: /Chambre/ })).not.toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: /Salon/ }));
+    expect(screen.queryByRole('dialog', { name: 'Pièces' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Salon' })).toBeInTheDocument();
+    // La vue est centrée sur la pièce (centre en 650, 200).
+    const [x, y, w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number) as [
+      number,
+      number,
+      number,
+      number,
+    ];
+    expect(x + w / 2).toBeCloseTo(650);
+    expect(y + h / 2).toBeCloseTo(200);
+  });
+
+  describe('bureau', () => {
+    beforeEach(() => {
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+          matches: query.includes('min-width: 1024px'),
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        })),
+      );
+    });
+
+    it('affiche la liste à droite et sélectionne la pièce au clic', async () => {
+      createServer();
+      renderPlan();
+      const aside = await screen.findByRole('complementary', { name: 'Pièces' });
+      expect(screen.queryByRole('button', { name: 'Pièces' })).not.toBeInTheDocument();
+
+      await userEvent.click(within(aside).getByRole('button', { name: /Cuisine/ }));
+      expect(await screen.findByRole('region', { name: 'Cuisine' })).toBeInTheDocument();
+      expect(within(aside).getByRole('button', { name: /Cuisine/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+  });
+});
+
+describe('zoom et déplacement', () => {
+  const zoomOf = (svg: SVGSVGElement) => Number(svg.getAttribute('data-view-zoom'));
+
+  it('zoome et dézoome avec les boutons, et revient au plan entier', async () => {
+    createServer();
+    renderPlan();
+    const svg = await canvas();
+    expect(zoomOf(svg)).toBe(1);
+    expect(screen.getByRole('button', { name: 'Zoom arrière' })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom avant' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom avant' }));
+    expect(zoomOf(svg)).toBeCloseTo(2.25);
+    expect(screen.getByText('225 %')).toBeInTheDocument();
+    // La vue est plus petite que le plan : 1000 / 2,25 unités de large.
+    const [, , width] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+    expect(width).toBeCloseTo(1000 / 2.25);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom arrière' }));
+    expect(zoomOf(svg)).toBeCloseTo(1.5);
+    // « Voir tout le plan » cadre le contenu (pièces et équipements), sans rester sur 100 %.
+    await userEvent.click(screen.getByRole('button', { name: 'Voir tout le plan' }));
+    const fitted = zoomOf(svg);
+    expect(fitted).toBeGreaterThan(0.1);
+    const [x, y, w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number) as [
+      number,
+      number,
+      number,
+      number,
+    ];
+    // Les deux pièces du jeu d'essai (x 100–800, y 100–300) sont dans la vue.
+    expect(x).toBeLessThanOrEqual(100);
+    expect(x + w).toBeGreaterThanOrEqual(800);
+    expect(y).toBeLessThanOrEqual(100);
+    expect(y + h).toBeGreaterThanOrEqual(300);
+  });
+
+  it('dézoome bien au-delà du plan et déplace la vue sans limite', async () => {
+    createServer();
+    renderPlan();
+    const svg = await canvas();
+    for (let i = 0; i < 6; i++) {
+      await userEvent.click(screen.getByRole('button', { name: 'Zoom arrière' }));
+    }
+    // 1 / 1,5⁶ ≈ 9 % : borné à 10 %.
+    expect(zoomOf(svg)).toBeCloseTo(0.1);
+    expect(screen.getByRole('button', { name: 'Zoom arrière' })).toBeDisabled();
+    expect(screen.getByText('10 %')).toBeInTheDocument();
+
+    // Glisser le fond vers la droite fait apparaître des coordonnées négatives.
+    const background = svg.querySelector('rect')!;
+    fireEvent.pointerDown(background, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 400, clientY: 100 });
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 400, clientY: 100 });
+    expect(Number(svg.getAttribute('data-view-x'))).toBeLessThan(0);
+  });
+
+  it('zoome avec Ctrl + molette (ou pincement du pavé tactile)', async () => {
+    createServer();
+    renderPlan();
+    const svg = await canvas();
+    fireEvent.wheel(svg, { ctrlKey: true, deltaY: -100, clientX: 500, clientY: 350 });
+    await waitFor(() => expect(zoomOf(svg)).toBeGreaterThan(1));
+  });
+
+  it('déplace la vue en faisant glisser le fond quand le plan est zoomé', async () => {
+    createServer();
+    renderPlan();
+    const svg = await canvas();
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom avant' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom avant' }));
+    // Se place d'abord au milieu du plan pour que le glissé ne soit pas arrêté par un bord.
+    const before = Number(svg.getAttribute('data-view-x'));
+
+    const background = svg.querySelector('rect')!;
+    fireEvent.pointerDown(background, { pointerId: 1, clientX: 500, clientY: 300 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 400, clientY: 300 });
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 400, clientY: 300 });
+
+    // Glisser vers la gauche fait avancer la vue vers la droite du plan.
+    expect(Number(svg.getAttribute('data-view-x'))).toBeGreaterThan(before);
+  });
+
+  it('navigue en faisant glisser le fond, même sans zoom et avec une image déverrouillée', async () => {
+    const server = createServer({ withBackground: true });
+    renderPlan();
+    const svg = await canvas();
+    expect(zoomOf(svg)).toBe(1);
+
+    fireEvent.pointerDown(svg.querySelector('rect')!, { clientX: 300, clientY: 300, pointerId: 1 });
+    fireEvent.pointerMove(svg, { clientX: 200, clientY: 250, pointerId: 1 });
+    fireEvent.pointerUp(svg, { clientX: 200, clientY: 250, pointerId: 1 });
+
+    // Glisser vers la gauche / le haut avance la vue vers la droite / le bas du plan, sans limite.
+    expect(Number(svg.getAttribute('data-view-x'))).toBeCloseTo(100);
+    expect(Number(svg.getAttribute('data-view-y'))).toBeCloseTo(50);
+    // L'image n'a pas bougé : seule la vue a changé.
+    expect(server.writes()).toHaveLength(0);
+  });
+
+  it('garde les gestes d’édition (déplacer une pièce) quand le plan est zoomé', async () => {
+    const server = createServer();
+    renderPlan();
+    const svg = await canvas();
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom avant' }));
+    expect(zoomOf(svg)).toBe(1.5);
+
+    // Les coordonnées envoyées restent celles du plan, pas de l'écran.
+    const room = screen.getByRole('button', { name: 'Pièce Cuisine' });
+    fireEvent.pointerDown(room, { pointerId: 1, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 300, clientY: 200 });
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 300, clientY: 200 });
+    await waitFor(() => expect(server.lastWrite()).toMatchObject({ method: 'PATCH' }));
+    const body = server.lastWrite()!.body!;
+    // 100 px d'écran = 100 / 1,5 ≈ 67 unités du plan.
+    expect(Number(body.x) - 100).toBeCloseTo(67, -1);
+  });
+});
+
 describe('gestes sur le plan', () => {
   it('déplace un équipement par glisser-déposer dans une autre pièce', async () => {
     const server = createServer();
@@ -874,6 +1132,31 @@ describe('gestes sur le plan', () => {
       'Déposez l’équipement à l’intérieur d’une pièce',
     );
     expect(server.writes()).toHaveLength(0);
+  });
+
+  it('ne déplace rien si la mise en page change entre l’appui et le relâchement', async () => {
+    const server = createServer();
+    renderPlan();
+    const svg = await canvas();
+    const room = await screen.findByRole('button', { name: 'Pièce Cuisine' });
+
+    fireEvent.pointerDown(room, { pointerId: 1, clientX: 200, clientY: 200 });
+    // Le panneau de la sélection s'ouvre et le plan est redimensionné pendant l'appui.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 600,
+      bottom: 420,
+      width: 600,
+      height: 420,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 200, clientY: 200 });
+
+    expect(server.writes()).toHaveLength(0);
+    expect(await screen.findByRole('region', { name: 'Cuisine' })).toBeInTheDocument();
   });
 
   it('un simple appui sélectionne sans rien envoyer', async () => {
@@ -962,30 +1245,70 @@ describe('gestes sur le plan', () => {
 });
 
 describe('pièce sélectionnée', () => {
-  it('se renomme, se redimensionne par pas, et se supprime avec ses équipements', async () => {
+  async function selectKitchen() {
+    await userEvent.click(await screen.findByRole('button', { name: 'Pièce Cuisine' }));
+    return screen.findByRole('region', { name: 'Cuisine' });
+  }
+
+  it('affiche le nom et le nombre d’équipements, avec Modifier et Supprimer seulement', async () => {
+    createServer();
+    renderPlan();
+    const sheet = await selectKitchen();
+    expect(sheet).toHaveAccessibleDescription('2 équipements');
+    expect(within(sheet).getByRole('button', { name: 'Modifier' })).toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: 'Supprimer' })).toBeInTheDocument();
+    // Position et taille se règlent sur le plan, pas dans la fiche.
+    expect(within(sheet).queryByLabelText('Nom de la pièce')).toBeNull();
+    expect(within(sheet).queryByRole('group', { name: 'Largeur de la pièce' })).toBeNull();
+    expect(within(sheet).queryByRole('group', { name: 'Déplacer' })).toBeNull();
+  });
+
+  it('renomme depuis la modale Modifier', async () => {
     const server = createServer();
     renderPlan();
-    await userEvent.click(await screen.findByRole('button', { name: 'Pièce Cuisine' }));
-    const sheet = await screen.findByRole('region', { name: 'Cuisine' });
-    expect(sheet).toHaveAccessibleDescription('2 équipements');
+    const sheet = await selectKitchen();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Modifier' }));
 
-    const name = within(sheet).getByLabelText('Nom de la pièce');
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Cuisine ouverte{Enter}');
+    const dialog = await screen.findByRole('dialog', { name: 'Modifier la pièce' });
+    const field = within(dialog).getByLabelText('Nom de la pièce');
+    expect(field).toHaveValue('Cuisine');
+    await userEvent.clear(field);
+    await userEvent.type(field, 'Cuisine ouverte');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer' }));
+
     await waitFor(() =>
-      expect(server.lastWrite()!.body).toMatchObject({ name: 'Cuisine ouverte' }),
+      expect(server.lastWrite()).toMatchObject({
+        method: 'PATCH',
+        body: { name: 'Cuisine ouverte', version: 1 },
+      }),
     );
+    expect(
+      await screen.findByRole('button', { name: 'Pièce Cuisine ouverte' }),
+    ).toBeInTheDocument();
+  });
 
-    await userEvent.click(
-      within(sheet).getByRole('button', { name: 'Augmenter : Largeur de la pièce' }),
-    );
-    await waitFor(() => expect(server.lastWrite()!.body).toMatchObject({ w: 310 }));
-
+  it('supprime la pièce après confirmation, avec ses équipements', async () => {
+    const server = createServer();
+    renderPlan();
+    const sheet = await selectKitchen();
     await userEvent.click(within(sheet).getByRole('button', { name: 'Supprimer' }));
-    const dialog = await screen.findByRole('dialog', { name: /Supprimer « Cuisine ouverte »/ });
+    const dialog = await screen.findByRole('dialog', { name: /Supprimer « Cuisine »/ });
     expect(dialog).toHaveTextContent('2 équipement(s) de cette pièce seront supprimés');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Supprimer la pièce' }));
     await waitFor(() => expect(server.lastWrite()).toMatchObject({ method: 'DELETE' }));
+  });
+
+  it('déplace et redimensionne la pièce au clavier, directement sur le plan', async () => {
+    const server = createServer();
+    renderPlan();
+    await selectKitchen();
+    const room = screen.getByRole('button', { name: 'Pièce Cuisine' });
+
+    await userEvent.type(room, '{ArrowRight}');
+    await waitFor(() => expect(server.lastWrite()!.body).toMatchObject({ x: 110, y: 100 }));
+
+    await userEvent.type(room, '{Shift>}{ArrowRight}{/Shift}');
+    await waitFor(() => expect(server.lastWrite()!.body).toMatchObject({ w: 310 }));
   });
 });
 
@@ -1046,11 +1369,12 @@ describe('réglages de l’étage', () => {
     await waitFor(() => expect(server.lastWrite()!.body).toMatchObject({ backgroundLocked: true }));
   });
 
-  it('déplace l’image en la faisant glisser quand elle est déverrouillée', async () => {
+  it('déplace l’image en mode « Déplacer l’image » quand elle est déverrouillée', async () => {
     const server = createServer({ withBackground: true });
     renderPlan();
     const svg = await canvas();
     expect(screen.getByTestId('plan-background')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Déplacer l’image' }));
 
     fireEvent.pointerDown(svg.querySelector('rect')!, { clientX: 50, clientY: 600, pointerId: 1 });
     fireEvent.pointerMove(svg, { clientX: 90, clientY: 640, pointerId: 1 });
@@ -1066,6 +1390,8 @@ describe('réglages de l’étage', () => {
     Object.assign(server.state.floors[0]!, { backgroundLocked: true });
     renderPlan();
     const svg = await canvas();
+    // Verrouillée : plus de mode « Déplacer l'image », et le glissé ne fait que naviguer.
+    expect(screen.queryByRole('button', { name: 'Déplacer l’image' })).not.toBeInTheDocument();
 
     fireEvent.pointerDown(svg.querySelector('rect')!, { clientX: 50, clientY: 600, pointerId: 1 });
     fireEvent.pointerMove(svg, { clientX: 90, clientY: 640, pointerId: 1 });

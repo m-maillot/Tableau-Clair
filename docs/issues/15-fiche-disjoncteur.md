@@ -14,6 +14,7 @@ Maquette « Fiche » (§15.4), spec §7.5.
 - [x] Équipements alimentés avec `StatusChip`
 - [x] Action « Je viens de le couper : qu'est-ce qui est tombé ? » (passage supposée → vérifiée)
 - [x] Suppression d'un disjoncteur : confirmation « les équipements passent à inconnu »
+- La fiche est ouverte depuis la carte « N équipements alimentés » de l'écran Modifier un appareil : voir l'issue 29 (modifier-supprimer-appareil)
 
 ## Dépendances
 

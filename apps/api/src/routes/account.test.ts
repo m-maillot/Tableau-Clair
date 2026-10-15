@@ -119,8 +119,11 @@ describe('export', () => {
     expect(exported).toMatchObject({ id: property.id, name: 'Maison', role: 'owner' });
     expect(exported.boards[0]).toMatchObject({ id: board.id, name: 'Tableau principal' });
     expect(exported.boards[0].rows[0].elements[0]).toMatchObject({ label: 'Prises cuisine' });
-    expect(exported.plan.floors[0].rooms[0].name).toBe('Cuisine');
-    expect(exported.plan.floors[0].fixtures[0].label).toBe('Prise four');
+    // Le premier étage est celui que la création du tableau a posé ; « RDC » est le suivant.
+    const floorWithRoom = exported.plan.floors.find((f: { name: string }) => f.name === 'RDC');
+    expect(floorWithRoom.rooms[0].name).toBe('Cuisine');
+    expect(floorWithRoom.fixtures[0].label).toBe('Prise four');
+    expect(exported.plan.floors[0].boards[0].name).toBe('Tableau principal');
     expect(exported.photos).toHaveLength(1);
     expect(exported.photos[0].contentUrl).toMatch(/^\/api\/photos\/.+\/content$/);
     expect(response.body).not.toContain(stranger.property.id);

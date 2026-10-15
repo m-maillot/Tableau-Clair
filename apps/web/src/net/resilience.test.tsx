@@ -111,6 +111,19 @@ describe('installation PWA', () => {
   });
 });
 
+describe('requêtes sans corps', () => {
+  it('n’envoie pas d’en-tête JSON sur un DELETE (Fastify répondrait 400)', async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 204 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await deleteFixture('abc');
+    const init = fetchMock.mock.calls[0]![1]!;
+    expect(init.method).toBe('DELETE');
+    expect(init.headers).not.toHaveProperty('content-type');
+  });
+});
+
 describe('erreur de chargement', () => {
   it('annonce l’erreur et propose de réessayer', async () => {
     const retry = vi.fn();

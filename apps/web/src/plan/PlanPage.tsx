@@ -1,25 +1,30 @@
 import type { Fixture, PlanFloor, Room } from '@tableau-clair/contracts';
-import {
-  clampPoint,
-  moveRect,
-  roomAt,
-  type FixtureKind,
-  type Point,
-  type Rect,
-} from '@tableau-clair/domain';
+import { clampPoint, roomAt, type FixtureKind, type Point, type Rect } from '@tableau-clair/domain';
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { plural } from '../home/format';
 import { ConflictSheet } from '../conflict/ConflictSheet';
 import { BreakerPickerSheet } from '../link/BreakerPickerSheet';
 import { usePlan, useProperties, useSelectedProperty } from '../home/queries';
 import { useCanWrite } from '../net/status';
-import { Button, ErrorState, Icon, IconButton, LoadingState, Toast } from '../ui';
+import {
+  BottomSheet,
+  Button,
+  DESKTOP_QUERY,
+  ErrorState,
+  Icon,
+  IconButton,
+  LoadingState,
+  Toast,
+  useMediaQuery,
+} from '../ui';
 import { FIXTURE_KIND_ICON, defaultFixtureLabel } from './fixture-kinds';
 import { FloorTabs } from './FloorTabs';
+import { RoomList } from './RoomList';
 import styles from './PlanPage.module.css';
 import { PlanCanvas, type Mode, type Selection } from './PlanCanvas';
 import {
+  BoardSheet,
   ConfirmSheet,
   FixtureSheet,
   FloorSheet,
@@ -35,8 +40,10 @@ type Dialog =
   | 'newFloor'
   | 'newRoom'
   | 'deleteRoom'
+  | 'renameRoom'
   | 'deleteFixture'
   | 'pickBreaker'
+  | 'rooms'
   | null;
 
 interface Ghost {
@@ -55,6 +62,7 @@ export function PlanPage() {
   const plan = usePlan(propertyId);
   const actions = usePlanActions(propertyId ?? '');
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [floorId, setFloorId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('select');
@@ -62,6 +70,9 @@ export function PlanPage() {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [drawn, setDrawn] = useState<Rect | null>(null);
   const [ghost, setGhost] = useState<Ghost | null>(null);
+  const desktop = useMediaQuery(DESKTOP_QUERY);
+  // Chaque choix dans la liste recentre le plan sur la pièce (le plan n'a pas de bord).
+  const [focus, setFocus] = useState<{ roomId: string; nonce: number } | null>(null);
 
   const online = useCanWrite();
   const canEdit = property?.role !== 'viewer' && online;
@@ -73,6 +84,8 @@ export function PlanPage() {
 
   const selectedRoom =
     selected?.type === 'room' ? floor?.rooms.find((r) => r.id === selected.id) : undefined;
+  const selectedBoard =
+    selected?.type === 'board' ? floor?.boards.find((b) => b.id === selected.id) : undefined;
   const selectedFixture =
     selected?.type === 'fixture' ? floor?.fixtures.find((f) => f.id === selected.id) : undefined;
   const fixtureRoom = selectedFixture && floor?.rooms.find((r) => r.id === selectedFixture.roomId);
@@ -99,6 +112,12 @@ export function PlanPage() {
     next.delete('room');
     setParams(next, { replace: true });
   }, [plan.data, wantedFixture, wantedRoom, params, setParams]);
+
+  function pickRoom(roomId: string) {
+    setDialog(null);
+    setSelected({ type: 'room', id: roomId });
+    setFocus((current) => ({ roomId, nonce: (current?.nonce ?? 0) + 1 }));
+  }
 
   function showCircuit(id: string | null) {
     const next = new URLSearchParams(params);
@@ -161,10 +180,14 @@ export function PlanPage() {
         e.clientY >= rect.top &&
         e.clientY <= rect.bottom;
       if (!inside) return;
-      const k = rect.width > 0 ? rect.width / floor.width : 1;
+      // Vue courante du plan (zoom et déplacement) : exposée par le canevas.
+      const zoom = Number(svg.getAttribute('data-view-zoom') ?? 1) || 1;
+      const originX = Number(svg.getAttribute('data-view-x') ?? 0) || 0;
+      const originY = Number(svg.getAttribute('data-view-y') ?? 0) || 0;
+      const k = rect.width > 0 ? rect.width / (floor.width / zoom) : 1;
       const point = {
-        x: Math.round((e.clientX - rect.left) / k),
-        y: Math.round((e.clientY - rect.top) / k),
+        x: Math.round(originX + (e.clientX - rect.left) / k),
+        y: Math.round(originY + (e.clientY - rect.top) / k),
       };
       const room = roomAt(floor.rooms, point);
       if (!room) actions.refuse('Déposez l’équipement à l’intérieur d’une pièce.');
@@ -188,7 +211,11 @@ export function PlanPage() {
     return (
       <main className={styles.page}>
         <h1 className={styles.title}>Plan</h1>
-        <p className={styles.status}>Créez d’abord un logement depuis l’accueil.</p>
+        <ErrorState
+          title="Impossible de préparer votre espace."
+          text="Vérifiez votre connexion, puis réessayez."
+          onRetry={() => void properties.refetch()}
+        />
       </main>
     );
   }
@@ -233,12 +260,20 @@ export function PlanPage() {
 
       <header className={styles.header}>
         <h1 className={styles.title}>Plan</h1>
-        {canEdit && floor && (
-          <button type="button" className={styles.addButton} onClick={() => setDialog('palette')}>
-            <Icon name="plus" size={16} strokeWidth={2.6} />
-            Équipement
-          </button>
-        )}
+        <div className={styles.headerActions}>
+          {!desktop && floor && (
+            <button type="button" className={styles.addButton} onClick={() => setDialog('rooms')}>
+              <Icon name="plan" size={16} strokeWidth={2.4} />
+              Pièces
+            </button>
+          )}
+          {canEdit && floor && (
+            <button type="button" className={styles.addButton} onClick={() => setDialog('palette')}>
+              <Icon name="plus" size={16} strokeWidth={2.6} />
+              Équipement
+            </button>
+          )}
+        </div>
       </header>
 
       {floors.length === 0 ? (
@@ -312,17 +347,32 @@ export function PlanPage() {
               >
                 Dessiner une pièce
               </button>
+              {floor?.backgroundImageId && !floor.backgroundLocked && (
+                <button
+                  type="button"
+                  aria-pressed={mode === 'image'}
+                  className={`${styles.mode} ${mode === 'image' ? styles.modeOn : ''}`}
+                  onClick={() => {
+                    setMode('image');
+                    setSelected(null);
+                  }}
+                >
+                  Déplacer l’image
+                </button>
+              )}
             </div>
           )}
 
           {floor && (
             <div className={styles.canvasWrap}>
               <PlanCanvas
+                key={floor.id}
                 floor={floor}
                 mode={mode}
                 canEdit={canEdit}
                 selected={selected}
                 highlightBreakerId={breaker?.id ?? null}
+                focus={focus}
                 onSelect={setSelected}
                 onFixtureDropped={(fixture: Fixture, to) =>
                   void actions.updateFixture(fixture.id, {
@@ -342,6 +392,7 @@ export function PlanPage() {
                 onRoomTooSmall={() =>
                   actions.refuse('Pièce trop petite : tracez un rectangle plus grand.')
                 }
+                onBoardMoved={(board, to) => void actions.moveBoard(board.id, floor.id, to.x, to.y)}
                 onBackgroundMoved={(p) =>
                   void actions.updateFloor(floor.id, { backgroundX: p.x, backgroundY: p.y })
                 }
@@ -379,6 +430,26 @@ export function PlanPage() {
         onLater={actions.dismissConflict}
       />
 
+      {desktop && floor && (
+        <aside className={styles.rooms} aria-label="Pièces">
+          <h2 className={styles.roomsTitle}>
+            Pièces <span>{floor.rooms.length}</span>
+          </h2>
+          <RoomList floor={floor} selectedId={selectedRoom?.id ?? null} onPick={pickRoom} />
+        </aside>
+      )}
+
+      <BottomSheet
+        open={!desktop && dialog === 'rooms' && !!floor}
+        onClose={() => setDialog(null)}
+        title="Pièces"
+        description={floor ? `${floor.name} · ${floor.rooms.length}` : undefined}
+      >
+        {floor && (
+          <RoomList floor={floor} selectedId={selectedRoom?.id ?? null} onPick={pickRoom} />
+        )}
+      </BottomSheet>
+
       {/* --- Feuilles ---------------------------------------------------------------------------------- */}
       <FixtureSheet
         fixture={selectedFixture ?? null}
@@ -387,11 +458,8 @@ export function PlanPage() {
         breaker={fixtureBreaker}
         canEdit={canEdit}
         onClose={() => setSelected(null)}
-        onRename={(label) =>
-          selectedFixture && void actions.updateFixture(selectedFixture.id, { label })
-        }
-        onKind={(kind) =>
-          selectedFixture && void actions.updateFixture(selectedFixture.id, { kind })
+        onSave={(changes) =>
+          selectedFixture && void actions.updateFixture(selectedFixture.id, changes)
         }
         onNudge={(dx, dy) => {
           if (!selectedFixture || !fixtureRoom) return;
@@ -402,7 +470,11 @@ export function PlanPage() {
           void actions.updateFixture(selectedFixture.id, { x: p.x, y: p.y });
         }}
         onDelete={() => setDialog('deleteFixture')}
-        onShowCircuit={(id) => showCircuit(id)}
+        onShowCircuit={(id) => {
+          // Sur mobile la fiche couvre le plan : on la ferme pour montrer le circuit mis en évidence.
+          showCircuit(id);
+          setSelected(null);
+        }}
         onPickBreaker={() => setDialog('pickBreaker')}
         onStatus={(status) => {
           const id = selectedFixture?.link?.breakerId;
@@ -429,21 +501,26 @@ export function PlanPage() {
         }}
       />
 
+      <BoardSheet
+        board={selectedBoard ?? null}
+        canEdit={canEdit}
+        onClose={() => setSelected(null)}
+        onOpen={(id) => navigate(`/tableaux/${id}`)}
+      />
+
       <RoomSheet
         room={selectedFixture ? null : (selectedRoom ?? null)}
         floor={floor}
         canEdit={canEdit}
         onClose={() => setSelected(null)}
-        onRename={(name) => selectedRoom && void actions.updateRoom(selectedRoom.id, { name })}
-        onResize={(change) => selectedRoom && void actions.updateRoom(selectedRoom.id, change)}
-        onNudge={(dx, dy) => {
-          if (!selectedRoom || !floor) return;
-          const next = moveRect(selectedRoom, dx, dy, { w: floor.width, h: floor.height });
-          void actions.updateRoom(selectedRoom.id, { x: next.x, y: next.y });
-        }}
+        onEdit={() => setDialog('renameRoom')}
         onDelete={() => setDialog('deleteRoom')}
         breakers={breakers}
-        onShowCircuit={(id) => showCircuit(id)}
+        onShowCircuit={(id) => {
+          // Sur mobile la fiche couvre le plan : on la ferme pour montrer le circuit mis en évidence.
+          showCircuit(id);
+          setSelected(null);
+        }}
       />
 
       <PaletteSheet
@@ -508,6 +585,21 @@ export function PlanPage() {
           setFloorId(null);
           setSelected(null);
           await actions.removeFloor(floor.id);
+        }}
+      />
+
+      <NameSheet
+        open={dialog === 'renameRoom' && !!selectedRoom}
+        title="Modifier la pièce"
+        label="Nom de la pièce"
+        initial={selectedRoom?.name ?? ''}
+        submit="Enregistrer"
+        onClose={() => setDialog(null)}
+        onSubmit={(name) => {
+          setDialog(null);
+          if (selectedRoom && name !== selectedRoom.name) {
+            void actions.updateRoom(selectedRoom.id, { name });
+          }
         }}
       />
 
