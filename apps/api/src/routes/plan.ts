@@ -169,7 +169,7 @@ export async function loadBreakers(db: DbExecutor, propertyId: string): Promise<
 }
 
 /** Plan complet d'un logement : étages, pièces, équipements avec leur liaison, disjoncteurs. */
-async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan> {
+export async function loadPlan(db: DbExecutor, propertyId: string): Promise<Plan> {
   const floorRows = await db
     .select()
     .from(floors)

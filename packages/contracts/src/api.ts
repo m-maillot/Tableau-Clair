@@ -512,3 +512,28 @@ export const updateFixtureSchema = z
   })
   .strict();
 export type UpdateFixtureInput = z.infer<typeof updateFixtureSchema>;
+
+// --- Compte : export et suppression (spec §7.9) ----------------------------------------------------------------
+
+/** Ce que la suppression du compte retire, pour la confirmation explicite. */
+export const accountSummarySchema = z.object({
+  email: z.string(),
+  displayName: z.string().nullable(),
+  /** Logements dont la personne est la seule propriétaire : supprimés avec le compte. */
+  deletedProperties: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+      boardCount: z.number().int(),
+      /** Autres membres qui perdraient l'accès. */
+      otherMembers: z.number().int(),
+    }),
+  ),
+  /** Logements partagés avec d'autres propriétaires, ou dont elle n'est pas propriétaire : quittés. */
+  leftProperties: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
+});
+export type AccountSummary = z.infer<typeof accountSummarySchema>;
+
+/** Suppression du compte : l'adresse e-mail doit être retapée à l'identique. */
+export const deleteAccountSchema = z.object({ confirm: z.string().min(1) }).strict();
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;

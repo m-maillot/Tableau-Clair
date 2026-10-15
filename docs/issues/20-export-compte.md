@@ -10,9 +10,9 @@ Spec §7.9, §9 (RGPD). Écran compte non maquetté.
 
 ## Critères d'acceptation
 
-- [ ] Export JSON complet (données + photos ou liens)
-- [ ] Suppression du compte avec confirmation explicite ; suppression des logements dont l'utilisateur est seul propriétaire
-- [ ] Mention d'information (RGPD), déconnexion
+- [x] Export JSON complet (données + photos ou liens)
+- [x] Suppression du compte avec confirmation explicite ; suppression des logements dont l'utilisateur est seul propriétaire
+- [x] Mention d'information (RGPD), déconnexion
 
 ## Dépendances
 

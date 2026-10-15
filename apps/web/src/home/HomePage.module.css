@@ -162,3 +162,10 @@
   font-weight: 700;
   text-decoration: none;
 }
+
+.avatarLink {
+  display: flex;
+  border-radius: 50%;
+  text-decoration: none;
+  color: inherit;
+}

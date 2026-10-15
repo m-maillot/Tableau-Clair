@@ -6,6 +6,7 @@ import {
   deleteCustomModel,
   fetchCustomModels,
   fetchBoard,
+  fetchAccount,
   fetchBoardImpact,
   fetchBreakerCircuit,
   fetchBoards,
@@ -150,3 +151,7 @@ export const useBreakerCircuit = (elementId: string | undefined) =>
     enabled: !!elementId,
     staleTime: 0,
   });
+
+/** Résumé du compte : ce que sa suppression emporterait. Relu à chaque ouverture. */
+export const useAccount = () =>
+  useQuery({ queryKey: ['account'], queryFn: fetchAccount, staleTime: 0 });

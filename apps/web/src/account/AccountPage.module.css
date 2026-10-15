@@ -1,0 +1,98 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px 120px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 22px;
+  background: var(--color-surface);
+}
+.danger {
+  background: var(--color-danger-bg, #fdecec);
+}
+.name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+.section {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+.muted {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.label {
+  margin: 12px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.impact {
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--color-surface);
+}
+.impact .label:first-child {
+  margin-top: 0;
+}
+.exportLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--touch-target);
+  margin: 8px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-blue);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.footer {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+}

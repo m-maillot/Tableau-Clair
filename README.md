@@ -110,6 +110,9 @@ sont décrits par les schémas Zod de `packages/contracts`.
 | `GET`                  | `/api/photos/:id` (métadonnées)                                            | membre            |
 | `GET`                  | `/api/photos/:id/content` (302 vers URL signée)                            | membre            |
 | `DELETE`               | `/api/photos/:id`                                                          | éditeur           |
+| `GET`                  | `/api/account` (ce que la suppression du compte emporte)                   | connecté          |
+| `GET`                  | `/api/account/export` (JSON complet : données, plan, liens des photos)     | connecté          |
+| `DELETE`               | `/api/account` (corps `{ confirm: <e-mail> }`)                             | connecté          |
 
 Conventions :
 
@@ -201,6 +204,7 @@ une URL signée valable 5 minutes, utilisable directement dans une balise `<img>
 | `/tableaux/:id`            | Éditeur de rail : mobile (feuille de détail) et bureau (sidebar, palette, panneau) | session requise                                      |
 | `/tableaux/:id/parametres` | Paramètres : modification, duplication, suppression                                | session requise                                      |
 | `/plan`                    | Plan du logement par étage                                                         | session requise                                      |
+| `/compte`                  | Compte : export JSON, déconnexion, suppression, mention RGPD                       | session requise                                      |
 | `/verifier`                | À vérifier : liaisons supposées, équipements sans disjoncteur                      | session requise                                      |
 
 Le front parle à l'API en same-origin (`/api/*`, proxy Vite en dev) via `apps/web/src/api/client.ts`.
@@ -258,3 +262,12 @@ L'éditeur de rail s'adapte à la largeur (`useMediaQuery`, `DESKTOP_QUERY`) :
   si l'emplacement ne convient pas, annulable comme les autres déplacements.
 - **Rangées pleine largeur** (modules en `1fr`) et **panneau de détail à droite** ; sous 1280 px le
   panneau passe sous le contenu. Sous 1024 px, l'éditeur mobile (feuille basse, ← →) est inchangé.
+
+### Compte et données personnelles
+
+- **Export** : `GET /api/account/export` renvoie un JSON (compte, modèles personnalisés, et pour chaque
+  logement ses tableaux, son plan avec les liaisons, ses photos). Les fichiers images sont référencés
+  par `contentUrl` (accès avec session, redirection vers une URL signée).
+- **Suppression** : l'adresse e-mail doit être retapée. Les logements dont la personne est la seule
+  propriétaire sont supprimés avec leurs photos (base et S3) ; les autres logements sont conservés
+  sans elle. Sessions, comptes liés, modèles personnalisés et jetons en attente partent avec.

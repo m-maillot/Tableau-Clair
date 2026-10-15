@@ -1,6 +1,7 @@
 import {
   fixtureSchema,
   floorSchema,
+  accountSummarySchema,
   breakerCircuitSchema,
   planSchema,
   roomSchema,
@@ -21,6 +22,7 @@ import {
   type CreateCustomModelInput,
   type CreateFixtureInput,
   type CreateRoomInput,
+  type AccountSummary,
   type BreakerCircuit,
   type Fixture,
   type Floor,
@@ -300,3 +302,25 @@ export async function unlinkFixture(fixtureId: string): Promise<Fixture> {
 
 export const fetchBreakerCircuit = (elementId: string): Promise<BreakerCircuit> =>
   getJson(`/api/elements/${elementId}/circuit`, breakerCircuitSchema);
+
+// --- Compte ----------------------------------------------------------------------------------------------------
+
+export const fetchAccount = (): Promise<AccountSummary> =>
+  getJson('/api/account', accountSummarySchema);
+
+/** Export JSON complet du compte : le fichier tel que le serveur le produit. */
+export async function fetchAccountExport(): Promise<{ blob: Blob; fileName: string }> {
+  const response = await request('/api/account/export');
+  if (!response.ok) throw await failure(response);
+  const header = response.headers.get('content-disposition') ?? '';
+  const fileName = /filename="([^"]+)"/.exec(header)?.[1] ?? 'tableau-clair-export.json';
+  return { blob: await response.blob(), fileName };
+}
+
+export async function deleteAccount(confirm: string): Promise<void> {
+  const response = await request('/api/account', {
+    method: 'DELETE',
+    body: JSON.stringify({ confirm }),
+  });
+  if (!response.ok) throw await failure(response);
+}

@@ -46,7 +46,11 @@ export function SidebarNav({ items, current, badge, property, account }: Sidebar
           ))}
         </ul>
       </nav>
-      {account && <p className={styles.account}>{account}</p>}
+      {account && (
+        <NavLink to="/compte" className={styles.account}>
+          {account}
+        </NavLink>
+      )}
     </aside>
   );
 }

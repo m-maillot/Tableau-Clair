@@ -47,9 +47,11 @@ export function HomePage() {
           />
         )}
       </div>
-      <span className={styles.avatar} role="img" aria-label={`Compte de ${name}`}>
-        {name.charAt(0)}
-      </span>
+      <Link to="/compte" aria-label="Mon compte" className={styles.avatarLink}>
+        <span className={styles.avatar} role="img" aria-label={`Compte de ${name}`}>
+          {name.charAt(0)}
+        </span>
+      </Link>
     </header>
   );
 

@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { PlanPage } from './plan/PlanPage';
 import { EditorPage } from './rail/EditorPage';
 import { AppShell } from './shell/AppShell';
+import { AccountPage } from './account/AccountPage';
 import { ReviewPage } from './review/ReviewPage';
 import { Button } from './ui';
 
@@ -51,6 +52,7 @@ export function AppRoutes() {
           <Route path="/tableaux/:boardId" element={<EditorPage />} />
           <Route path="/plan" element={<PlanPage />} />
           <Route path="/verifier" element={<ReviewPage />} />
+          <Route path="/compte" element={<AccountPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
