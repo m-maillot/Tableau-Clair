@@ -522,8 +522,7 @@ describe('suppression', () => {
     );
     await userEvent.click(within(dialog).getByRole('button', { name: 'Supprimer définitivement' }));
 
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/tableaux'));
-    expect(screen.getByTestId('location')).not.toHaveTextContent(BOARD_ID);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/tableaux$/));
   });
 
   it('propose l’export JSON avant la suppression', async () => {
