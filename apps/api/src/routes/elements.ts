@@ -1,4 +1,5 @@
 import {
+  bulkCreateElementsSchema,
   createElementSchema,
   updateElementSchema,
   updateRowSchema,
@@ -17,7 +18,7 @@ import {
 import { setRowCapacity, validateSpan, type PlacementError } from '@tableau-clair/domain';
 import type { FastifyInstance } from 'fastify';
 import { conflict, notFound, parseBody, unprocessable } from '../http';
-import { elementAccess, parseId, requireRole, rowAccess } from './access';
+import { boardAccess, elementAccess, parseId, requireRole, rowAccess } from './access';
 import { assertPhotoInProperty } from './boards';
 import { linkedCounts } from './board-loader';
 import { toElement, toRow } from './serialize';
@@ -161,6 +162,82 @@ export function registerElementRoutes(app: FastifyInstance, db: Database) {
       return element!;
     });
     return reply.code(201).send(toElement(created));
+  });
+
+  // --- Éléments : création en lot -----------------------------------------------------------------------------
+  // Tout ou rien. Indépendant de l'IA : sert à valider une proposition d'analyse de photo, mais pas
+  // seulement (docs/SPEC-import-photo.md §6).
+  app.post('/api/boards/:id/elements/bulk', async (request, reply) => {
+    const boardId = idOf(request);
+    const input = parseBody(bulkCreateElementsSchema, request.body);
+
+    const created = await db.transaction(async (tx) => {
+      const { board, role } = await boardAccess(tx, request.userId, boardId);
+      requireRole(role, 'editor');
+
+      const rails = await tx.select().from(boardRows).where(eq(boardRows.boardId, board.id));
+      const railByIndex = new Map(rails.map((rail) => [rail.index, rail]));
+      await lockRows(
+        tx,
+        rails.map((rail) => rail.id),
+      );
+
+      const photoIds = new Set(input.elements.flatMap((e) => (e.photoId ? [e.photoId] : [])));
+      for (const photoId of photoIds) await assertPhotoInProperty(tx, photoId, board.propertyId);
+      const rcdIds = new Set(
+        input.elements.flatMap((e) => (e.protectedByRcdId ? [e.protectedByRcdId] : [])),
+      );
+      for (const rcdId of rcdIds) await assertRcdInBoard(tx, rcdId, board.id);
+
+      // État de chaque rangée, enrichi au fil des ajouts : un élément est validé contre les précédents du lot.
+      const current = rails.length
+        ? await tx
+            .select()
+            .from(elements)
+            .where(
+              inArray(
+                elements.rowId,
+                rails.map((rail) => rail.id),
+              ),
+            )
+        : [];
+      const state = new Map(
+        rails.map((rail) => [rail.id, placed(current.filter((e) => e.rowId === rail.id))]),
+      );
+
+      const inserted: ElementRow[] = [];
+      for (const [index, item] of input.elements.entries()) {
+        const rail = railByIndex.get(item.rowIndex);
+        if (!rail) {
+          throw unprocessable('row_not_found', 'Rangée introuvable dans ce tableau', { index });
+        }
+        const siblings = state.get(rail.id)!;
+        const problem = validateSpan({ capacity: rail.capacity, elements: siblings }, item);
+        if (problem) {
+          throw unprocessable(problem.code, PLACEMENT_MESSAGES[problem.code], {
+            ...problem,
+            index,
+          });
+        }
+
+        const [element] = await tx
+          .insert(elements)
+          .values({
+            ...(editableValues(item) as Omit<typeof elements.$inferInsert, 'rowId'>),
+            rowId: rail.id,
+            position: item.position,
+            width: item.width,
+            kind: item.kind,
+            label: item.label,
+            updatedBy: request.userId,
+          })
+          .returning();
+        siblings.push({ id: element!.id, position: element!.position, width: element!.width });
+        inserted.push(element!);
+      }
+      return inserted;
+    });
+    return reply.code(201).send({ elements: created.map((element) => toElement(element)) });
   });
 
   // --- Élément : lecture ----------------------------------------------------------------------------------------

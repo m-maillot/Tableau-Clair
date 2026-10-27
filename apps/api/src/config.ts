@@ -11,6 +11,9 @@ const envSchema = z.object({
   ALLOWED_EMAILS: z.string().default(''),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().min(1).default('claude-opus-5-5'),
+  AI_DAILY_LIMIT: z.coerce.number().int().min(0).default(3),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().positive(),
   SMTP_USER: z.string().optional(),
@@ -33,6 +36,8 @@ export interface AppConfig {
   authSecret: string;
   allowedEmails: ReadonlySet<string>;
   google: { clientId: string; clientSecret: string } | undefined;
+  /** Analyse de photo par IA : `undefined` sans clé d'API (fonctionnalité désactivée). */
+  ai: { apiKey: string; model: string; dailyLimit: number } | undefined;
   smtp: { host: string; port: number; user?: string; password?: string; from: string };
   s3: S3Config;
 }
@@ -69,6 +74,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET
         ? { clientId: e.GOOGLE_CLIENT_ID, clientSecret: e.GOOGLE_CLIENT_SECRET }
         : undefined,
+    ai: e.ANTHROPIC_API_KEY
+      ? { apiKey: e.ANTHROPIC_API_KEY, model: e.ANTHROPIC_MODEL, dailyLimit: e.AI_DAILY_LIMIT }
+      : undefined,
     smtp: {
       host: e.SMTP_HOST,
       port: e.SMTP_PORT,

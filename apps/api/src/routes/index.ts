@@ -7,6 +7,8 @@ import { registerCircuitRoutes } from './circuits';
 import { registerCustomModelRoutes } from './custom-models';
 import { registerElementRoutes } from './elements';
 import type { ObjectStorage } from '../storage/object-storage';
+import { createQuotaService } from '../ai/quota';
+import { registerAiRoutes, type AiOptions } from './ai';
 import { registerOverviewRoutes } from './overview';
 import { registerPhotoRoutes } from './photos';
 import { registerPlanRoutes } from './plan';
@@ -24,6 +26,8 @@ export interface ApiRoutesOptions {
   storage: ObjectStorage;
   /** Résout l'utilisateur d'une requête (session), ou `null` s'il n'est pas connecté. */
   resolveUserId: (request: FastifyRequest) => Promise<string | null>;
+  /** Analyse de photo par IA ; sans analyseur, la fonctionnalité est désactivée. */
+  ai?: AiOptions;
 }
 
 /** Routes métier : toutes exigent une session, toutes passent par le contrôle d'appartenance. */
@@ -56,6 +60,11 @@ export function registerApiRoutes(app: FastifyInstance, options: ApiRoutesOption
     registerPhotoRoutes(api, options.db, options.storage);
     registerPlanRoutes(api, options.db, options.storage);
     registerCircuitRoutes(api, options.db);
+    registerAiRoutes(
+      api,
+      options.db,
+      options.ai ?? { quota: createQuotaService(options.db, { limit: 3 }) },
+    );
     registerAccountRoutes(api, options.db, options.storage);
   });
 }

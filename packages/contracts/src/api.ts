@@ -7,6 +7,7 @@ import {
   ROLES,
   VERIFICATIONS,
   PLAN_WORLD,
+  MAX_PROPOSED_ELEMENTS,
 } from '@tableau-clair/domain';
 import { z } from 'zod';
 
@@ -556,3 +557,66 @@ export type AccountSummary = z.infer<typeof accountSummarySchema>;
 /** Suppression du compte : l'adresse e-mail doit être retapée à l'identique. */
 export const deleteAccountSchema = z.object({ confirm: z.string().min(1) }).strict();
 export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
+
+// --- Analyse de photo et ajout en lot (voir docs/SPEC-import-photo.md) ---------------------------------------
+
+/** Plafond d'appareils par ajout en lot ou par proposition. */
+export const MAX_BULK_ELEMENTS = MAX_PROPOSED_ELEMENTS;
+
+/** Quota quotidien d'analyses de photo de l'utilisateur courant. */
+export const quotaSchema = z.object({
+  /** Faux sans clé d'API : la fonctionnalité est masquée. */
+  enabled: z.boolean(),
+  limit: z.number().int(),
+  used: z.number().int(),
+  remaining: z.number().int(),
+  /** Prochain minuit Europe/Paris (ISO 8601). */
+  resetsAt: z.string(),
+});
+export type Quota = z.infer<typeof quotaSchema>;
+
+export const proposedElementSchema = z.object({
+  position: z.number().int().min(0),
+  width: z.number().int().min(1),
+  kind: elementKindSchema,
+  label: name,
+  ratingA: z.number().int().positive().max(1000).optional(),
+  poles: z.number().int().min(1).max(4).optional(),
+  curve: z.enum(CURVES).optional(),
+  sensitivityMa: z.number().int().positive().max(10_000).optional(),
+  rcdType: z.enum(RCD_TYPES).optional(),
+  brand: text.optional(),
+  model: text.optional(),
+  confidence: z.enum(['high', 'medium', 'low']),
+  /** Pourquoi l'appareil ne peut pas être ajouté tel quel (décoché à la relecture). */
+  conflict: z.enum(['overlap', 'out_of_bounds']).nullable(),
+});
+export type ProposedElementDto = z.infer<typeof proposedElementSchema>;
+
+export const photoAnalysisResponseSchema = z.object({
+  analysisId: z.string().uuid(),
+  rows: z.array(
+    z.object({ index: z.number().int().min(0), elements: z.array(proposedElementSchema) }),
+  ),
+  /** Écart de géométrie éventuel entre la photo et le tableau (information seulement). */
+  detectedGeometry: z
+    .object({ rowCount: z.number().int(), modulesPerRow: z.number().int() })
+    .nullable(),
+  /** Limites de la photo signalées par le modèle (zones masquées…). */
+  remarks: z.array(z.string()),
+  quota: quotaSchema,
+});
+export type PhotoAnalysisResponse = z.infer<typeof photoAnalysisResponseSchema>;
+
+export const bulkCreateElementsSchema = z
+  .object({
+    elements: z
+      .array(createElementSchema.extend({ rowIndex: z.number().int().min(0) }))
+      .min(1)
+      .max(MAX_BULK_ELEMENTS),
+  })
+  .strict();
+export type BulkCreateElementsInput = z.infer<typeof bulkCreateElementsSchema>;
+
+export const bulkCreateElementsResponseSchema = z.object({ elements: z.array(elementSchema) });
+export type BulkCreateElementsResponse = z.infer<typeof bulkCreateElementsResponseSchema>;

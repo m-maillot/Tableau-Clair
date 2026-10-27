@@ -7,6 +7,7 @@ import {
   and,
   asc,
   boards,
+  aiAnalyses,
   customModels,
   eq,
   inArray,
@@ -126,6 +127,12 @@ export function registerAccountRoutes(app: FastifyInstance, db: Database, storag
       .from(customModels)
       .where(eq(customModels.userId, request.userId));
 
+    const analyses = await db
+      .select()
+      .from(aiAnalyses)
+      .where(eq(aiAnalyses.userId, request.userId))
+      .orderBy(asc(aiAnalyses.createdAt));
+
     const stamp = new Date().toISOString();
     return reply
       .header('content-type', 'application/json; charset=utf-8')
@@ -148,6 +155,15 @@ export function registerAccountRoutes(app: FastifyInstance, db: Database, storag
               brand: m.brand,
               model: m.model,
               width: m.width,
+            })),
+            // Journal des analyses de photo (quota) : aucune image ni sortie du modèle.
+            aiAnalyses: analyses.map((a) => ({
+              createdAt: a.createdAt.toISOString(),
+              status: a.status,
+              model: a.model,
+              inputTokens: a.inputTokens,
+              outputTokens: a.outputTokens,
+              elementCount: a.elementCount,
             })),
             properties: exported,
           },

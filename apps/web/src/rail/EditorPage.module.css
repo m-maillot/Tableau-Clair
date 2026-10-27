@@ -140,3 +140,18 @@
   cursor: pointer;
   pointer-events: auto;
 }
+
+/* Entrée « Remplir depuis une photo » : sous l'en-tête, avant la composition du rail. */
+.importEntry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 0 16px 12px;
+}
+
+.importHint {
+  flex: 1 1 220px;
+  font-size: 13px;
+  color: var(--color-muted);
+}

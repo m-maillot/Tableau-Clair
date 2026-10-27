@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
+  date,
   doublePrecision,
   index,
   integer,
@@ -33,6 +34,11 @@ export const fixtureKindEnum = pgEnum('fixture_kind', FIXTURE_KINDS);
 export const curveEnum = pgEnum('curve', CURVES);
 export const rcdTypeEnum = pgEnum('rcd_type', RCD_TYPES);
 export const photoUsageEnum = pgEnum('photo_usage', PHOTO_USAGES);
+export const aiAnalysisStatusEnum = pgEnum('ai_analysis_status', [
+  'pending',
+  'succeeded',
+  'failed',
+]);
 
 // --- Colonnes communes ------------------------------------------------------------------------
 
@@ -424,4 +430,31 @@ export const shareLinks = pgTable(
       .on(t.boardId)
       .where(sql`${t.revokedAt} IS NULL`),
   ],
+);
+
+// --- Analyses de photo par IA (quota et suivi du coût) ------------------------------------------------
+
+/**
+ * Journal des analyses de photo de tableau. Il sert au quota quotidien (une ligne `failed` ne compte
+ * pas), au suivi du coût et au diagnostic. Aucune image ni sortie brute n'y est stockée.
+ */
+export const aiAnalyses = pgTable(
+  'ai_analyses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id').references(() => boards.id, { onDelete: 'set null' }),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    /** Jour calendaire Europe/Paris de la réservation, calculé par le service de quota. */
+    day: date('day', { mode: 'string' }).notNull(),
+    status: aiAnalysisStatusEnum('status').notNull().default('pending'),
+    model: text('model').notNull(),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    /** Nombre d'appareils proposés. */
+    elementCount: integer('element_count'),
+  },
+  (t) => [index('ai_analyses_user_day_idx').on(t.userId, t.day)],
 );
