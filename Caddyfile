@@ -5,6 +5,13 @@
 	reverse_proxy app:6001
 }
 
+# Mijoté : autre application du VPS, dans son propre compose. Elle rejoint le réseau Docker
+# `proxy` (voir docker-compose.prod.yml) ; Caddy joint le conteneur par son nom de service.
+ludlows.fr {
+	encode zstd gzip
+	reverse_proxy mijote:3000
+}
+
 # www.<domaine> redirige vers le domaine nu (certificat obtenu automatiquement).
 www.{$DOMAIN} {
 	redir https://{$DOMAIN}{uri} permanent

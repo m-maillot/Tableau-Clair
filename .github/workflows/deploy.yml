@@ -75,6 +75,10 @@ jobs:
           export APP_IMAGE
           docker compose -f docker-compose.prod.yml --env-file .env pull app
           docker compose -f docker-compose.prod.yml --env-file .env up -d --remove-orphans
+          # Un Caddyfile modifié ne recrée pas le conteneur : on recharge la config à chaud.
+          # Sans effet (ignoré) si Caddy vient d'être créé : il lit alors déjà le nouveau fichier.
+          docker compose -f docker-compose.prod.yml exec -T caddy \
+            caddy reload --config /etc/caddy/Caddyfile || true
           docker logout ghcr.io
           docker image prune -f
           # Attend que l'application soit saine (les migrations tournent au démarrage).

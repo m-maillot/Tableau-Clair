@@ -51,8 +51,17 @@ services:
     depends_on:
       app:
         condition: service_healthy
+    networks:
+      - default
+      - proxy
 
 volumes:
   postgres-data:
   caddy-data:
   caddy-config:
+
+# Réseau partagé avec les autres applications du VPS (ex. Mijoté) : elles s'y rattachent
+# en `external: true` pour que ce Caddy route vers elles.
+networks:
+  proxy:
+    name: proxy
