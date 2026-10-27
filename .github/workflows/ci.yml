@@ -34,7 +34,7 @@ jobs:
         run: |
           docker run -d --name minio -p 6020:9000 \
             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-            quay.io/minio/minio server /data
+            cgr.dev/chainguard/minio server /data
           for i in $(seq 1 30); do
             curl -sf http://localhost:6020/minio/health/ready && exit 0
             sleep 1
