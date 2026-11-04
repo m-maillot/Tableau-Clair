@@ -1,4 +1,6 @@
 import { createDb, defaultMigrationsFolder, runMigrations, sql } from '@tableau-clair/db';
+import { createAnthropicAnalyzer } from './ai/analyzer';
+import { createQuotaService } from './ai/quota';
 import { buildApp } from './app';
 import { createAuth } from './auth/auth';
 import { toWebHeaders } from './auth/routes';
@@ -51,6 +53,10 @@ try {
     api: {
       db,
       storage: createS3Storage(config.s3),
+      ai: {
+        quota: createQuotaService(db, { limit: config.ai?.dailyLimit ?? 3 }),
+        analyzer: config.ai ? createAnthropicAnalyzer(config.ai) : undefined,
+      },
       resolveUserId: async (request) =>
         (await auth.api.getSession({ headers: toWebHeaders(request) }))?.user.id ?? null,
     },

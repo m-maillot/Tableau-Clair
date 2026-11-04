@@ -8,6 +8,7 @@ import type { FastifyRequest } from 'fastify';
 import type { Auth } from './auth/auth';
 import { registerAuthRoutes } from './auth/routes';
 import { registerApiRoutes } from './routes';
+import type { AiOptions } from './routes/ai';
 import type { ObjectStorage } from './storage/object-storage';
 
 export interface AppOptions {
@@ -22,6 +23,7 @@ export interface AppOptions {
     | {
         db: Database;
         storage: ObjectStorage;
+        ai?: AiOptions | undefined;
         resolveUserId: (request: FastifyRequest) => Promise<string | null>;
       }
     | undefined;

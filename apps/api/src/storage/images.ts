@@ -34,6 +34,21 @@ export interface ProcessedImage {
  * supprime toutes les métadonnées (géolocalisation comprise), réduit et ré-encode en WebP.
  */
 export async function processImage(input: Buffer, usage: PhotoUsage): Promise<ProcessedImage> {
+  return reencode(input, MAX_DIMENSION[usage], 80);
+}
+
+/** Plus grande dimension envoyée à l'analyse : au-delà, l'API réduit l'image de toute façon. */
+export const ANALYSIS_MAX_DIMENSION = 1568;
+
+/**
+ * Prépare une photo pour l'analyse par IA : mêmes contrôles et même suppression des métadonnées que
+ * `processImage`, mais sans usage de photo ni stockage. Qualité plus haute pour garder les étiquettes lisibles.
+ */
+export function prepareForAnalysis(input: Buffer): Promise<ProcessedImage> {
+  return reencode(input, ANALYSIS_MAX_DIMENSION, 88);
+}
+
+async function reencode(input: Buffer, max: number, quality: number): Promise<ProcessedImage> {
   let format: string | undefined;
   try {
     const metadata = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
@@ -50,12 +65,11 @@ export async function processImage(input: Buffer, usage: PhotoUsage): Promise<Pr
   }
 
   try {
-    const max = MAX_DIMENSION[usage];
     // `rotate()` sans argument applique l'orientation EXIF ; sans `withMetadata`, rien n'est conservé.
     const { data, info } = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
       .rotate()
       .resize({ width: max, height: max, fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 80 })
+      .webp({ quality })
       .toBuffer({ resolveWithObject: true });
     return { data, mimeType: 'image/webp', width: info.width, height: info.height };
   } catch {

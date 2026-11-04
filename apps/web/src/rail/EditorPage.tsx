@@ -3,7 +3,7 @@ import { DEFAULT_WIDTH, type ElementKind } from '@tableau-clair/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { lastModifiedLabel } from '../home/format';
-import { useBoard, useProperties } from '../home/queries';
+import { useAiQuota, useBoard, useProperties } from '../home/queries';
 import { ApiResponseError } from '../api/client';
 import { ConflictSheet, type Conflict } from '../conflict/ConflictSheet';
 import { compareFields } from '../conflict/compare';
@@ -15,12 +15,14 @@ import {
   Icon,
   IconButton,
   LoadingState,
+  Toast,
   useMediaQuery,
 } from '../ui';
 import { KIND_LABEL } from './appearance';
 import { AddElementSheet } from './AddElementSheet';
 import { DeleteElementSheet } from './DeleteElementSheet';
 import { EditElementSheet } from './EditElementSheet';
+import { PhotoImportSheet, remainingLabel } from './import/PhotoImportSheet';
 import { ElementSheet } from './ElementSheet';
 import styles from './EditorPage.module.css';
 import type { ElementChanges } from './history';
@@ -57,6 +59,9 @@ export function EditorPage() {
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const [armed, setArmed] = useState<ElementKind | null>(null);
   const [query, setQuery] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<string | null>(null);
+  const aiQuota = useAiQuota().data;
 
   const data = board.data;
   const elementId = params.get('element');
@@ -224,6 +229,7 @@ export function EditorPage() {
       }
     : null;
 
+  const emptyBoard = data.rows.every((row) => row.elements.length === 0);
   const hasSheet = !desktop && (!!selected || !!slot);
   const notice = actions.notice;
 
@@ -265,6 +271,27 @@ export function EditorPage() {
           onClick={() => navigate(`/tableaux/${data.id}/parametres`)}
         />
       </header>
+
+      {canEdit && aiQuota?.enabled && (
+        <div className={styles.importEntry}>
+          <Button
+            variant={emptyBoard ? 'primary' : 'outline'}
+            icon="camera"
+            disabled={aiQuota.remaining === 0}
+            onClick={() => setImporting(true)}
+          >
+            Remplir depuis une photo
+          </Button>
+          <p className={styles.importHint}>
+            {emptyBoard && aiQuota.remaining > 0
+              ? 'Photographiez le tableau : les appareils sont proposés, vous corrigez puis validez. '
+              : ''}
+            {remainingLabel(aiQuota)}
+          </p>
+        </div>
+      )}
+
+      {imported && <Toast tone="info">{imported}</Toast>}
 
       <ConflictSheet
         conflict={conflictView}
@@ -443,6 +470,19 @@ export function EditorPage() {
           void actions.remove(element).then((done) => {
             if (done) setParams({}, { replace: true });
           });
+        }}
+      />
+
+      <PhotoImportSheet
+        board={data}
+        open={importing}
+        onClose={() => setImporting(false)}
+        onImported={(count) => {
+          setImporting(false);
+          setImported(
+            `${count} ${count > 1 ? 'appareils ajoutés' : 'appareil ajouté'} au tableau.`,
+          );
+          window.setTimeout(() => setImported(null), 5000);
         }}
       />
 

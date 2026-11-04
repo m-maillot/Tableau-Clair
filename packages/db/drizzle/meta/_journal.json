@@ -50,6 +50,13 @@
       "when": 1792070828780,
       "tag": "0006_board_plan_position",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793105923918,
+      "tag": "0007_ai_analyses",
+      "breakpoints": true
     }
   ]
 }

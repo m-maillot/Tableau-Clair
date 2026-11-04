@@ -12,12 +12,18 @@ import {
   boardSummarySchema,
   photoSchema,
   meResponseSchema,
+  photoAnalysisResponseSchema,
+  quotaSchema,
+  bulkCreateElementsResponseSchema,
   overviewSchema,
   propertySchema,
   searchResultSchema,
   type Board,
   type BoardImpact,
   type BoardSummary,
+  type BulkCreateElementsInput,
+  type PhotoAnalysisResponse,
+  type Quota,
   type CreateBoardInput,
   type CreateCustomModelInput,
   type CreateFixtureInput,
@@ -92,7 +98,8 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
     path !== '/api/me'
   ) {
     const method = init.method ?? 'GET';
-    if (method !== 'GET') {
+    // Une analyse de photo n'est pas rejouable (corps binaire, et elle consomme le quota).
+    if (method !== 'GET' && !path.endsWith('/photo-analysis')) {
       saveUnsaved({ method, path, body: typeof init.body === 'string' ? init.body : null });
     }
     flagExpired();
@@ -368,4 +375,39 @@ export async function setBoardPlan(
     body: JSON.stringify(input),
   });
   if (!response.ok) throw await failure(response);
+}
+
+// --- Remplir un tableau depuis une photo (docs/SPEC-import-photo.md) ---------------------------------------
+
+export async function fetchAiQuota(): Promise<Quota> {
+  const response = await request('/api/ai/quota');
+  if (!response.ok) throw await failure(response);
+  return quotaSchema.parse(await response.json());
+}
+
+/** Envoie la photo du tableau et reçoit une proposition d'appareils (rien n'est enregistré). */
+export async function analyzeBoardPhoto(
+  boardId: string,
+  file: Blob,
+): Promise<PhotoAnalysisResponse> {
+  const response = await request(`/api/boards/${boardId}/photo-analysis`, {
+    method: 'POST',
+    headers: { 'content-type': file.type },
+    body: file,
+  });
+  if (!response.ok) throw await failure(response);
+  return photoAnalysisResponseSchema.parse(await response.json());
+}
+
+/** Ajoute tous les appareils validés d'un coup (tout ou rien). */
+export async function bulkCreateElements(
+  boardId: string,
+  input: BulkCreateElementsInput,
+): Promise<Element[]> {
+  const response = await request(`/api/boards/${boardId}/elements/bulk`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw await failure(response);
+  return bulkCreateElementsResponseSchema.parse(await response.json()).elements;
 }

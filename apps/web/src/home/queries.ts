@@ -5,6 +5,7 @@ import {
   createProperty,
   deleteCustomModel,
   fetchCustomModels,
+  fetchAiQuota,
   fetchBoard,
   fetchAccount,
   fetchBoardImpact,
@@ -17,6 +18,7 @@ import {
 } from '../api/client';
 
 export const keys = {
+  aiQuota: ['ai', 'quota'] as const,
   plan: (propertyId: string) => ['properties', propertyId, 'plan'] as const,
   customModels: ['custom-models'] as const,
   properties: ['properties'] as const,
@@ -155,3 +157,7 @@ export const useBreakerCircuit = (elementId: string | undefined) =>
 /** Résumé du compte : ce que sa suppression emporterait. Relu à chaque ouverture. */
 export const useAccount = () =>
   useQuery({ queryKey: ['account'], queryFn: fetchAccount, staleTime: 0 });
+
+/** Quota quotidien d'analyses de photo ; inchangé tant qu'il n'est pas invalidé après une analyse. */
+export const useAiQuota = () =>
+  useQuery({ queryKey: keys.aiQuota, queryFn: fetchAiQuota, staleTime: 60_000 });

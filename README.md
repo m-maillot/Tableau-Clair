@@ -55,6 +55,13 @@ cp .env.example .env   # puis remplacer les valeurs marquées PROD
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
+## Remplir un tableau depuis une photo
+
+Optionnel : renseignez `ANTHROPIC_API_KEY` dans `.env` pour activer « Remplir depuis une photo » dans
+l'éditeur d'un tableau (sans clé, le bouton est masqué). Chaque utilisateur dispose de
+`AI_DAILY_LIMIT` analyses par jour (3 par défaut, jour calendaire Europe/Paris). Voir
+[docs/SPEC-import-photo.md](docs/SPEC-import-photo.md).
+
 ## Base de données
 
 Schéma Drizzle dans `packages/db/src/schema.ts`, migrations SQL versionnées dans `packages/db/drizzle/`
